@@ -13,13 +13,18 @@ function criarCelula(texto, classe) {
 }
 
 function criarCelulaStatus(status) {
-  const celula = criarCelula(status, "status");
-  celula.dataset.status = status;
+  const selo = document.createElement("span");
+  selo.className = "selo";
+  selo.dataset.status = status;
+  selo.textContent = status;
+  const celula = document.createElement("td");
+  celula.append(selo);
   return celula;
 }
 
 function criarLinha(material) {
   const linha = document.createElement("tr");
+  linha.dataset.status = material.status;
   linha.append(
     criarCelula(material.nome),
     criarCelula(material.quantidade, "num"),

@@ -209,16 +209,43 @@ tbody tr:last-child td {
   border-bottom: 0;
 }
 
-.status {
+.selo {
+  display: inline-block;
+  padding: 0.1rem 0.6rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.9rem;
   font-weight: 600;
+  white-space: nowrap;
 }
 
-.status[data-status="Indisponível"] {
+.selo::before {
+  content: "✓ ";
+  content: "✓ " / "";
+}
+
+.selo[data-status="Disponível"] {
+  background: var(--cor-ok-fundo);
+  color: var(--cor-ok);
+}
+
+.selo[data-status="Indisponível"] {
+  background: var(--cor-erro-fundo);
   color: var(--cor-erro);
 }
 
-.status[data-status="Disponível"] {
-  color: var(--cor-ok);
+.selo[data-status="Indisponível"]::before {
+  content: "⚠ ";
+  content: "⚠ " / "";
+}
+
+tr[data-status="Indisponível"] {
+  background: var(--cor-erro-fundo);
+}
+
+tr[data-status="Indisponível"] td:first-child {
+  box-shadow: inset 4px 0 0 var(--cor-erro);
+  font-weight: 600;
 }
 
 .saldo {
