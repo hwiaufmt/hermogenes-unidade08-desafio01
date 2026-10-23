@@ -105,6 +105,23 @@ def criar_usuario(
     return usuario
 
 
+def criar_administrador_inicial(
+    db: Session, cpf: str, senha: str, nome: str, email: str
+) -> Usuario | None:
+    """Cria o primeiro administrador. Não faz nada se já existir algum usuário."""
+    if db.scalar(select(func.count()).select_from(Usuario)):
+        return None
+    cpf = normalizar_cpf(cpf)
+    if not cpf_valido(cpf):
+        raise ValueError("O CPF do administrador inicial é inválido.")
+    if len(senha) < TAMANHO_MINIMO_SENHA:
+        raise ValueError(
+            f"A senha do administrador inicial deve ter pelo menos "
+            f"{TAMANHO_MINIMO_SENHA} caracteres."
+        )
+    return criar_usuario(db, nome, cpf, email, PERFIL_ADMINISTRADOR, senha)
+
+
 def _garantir_outro_administrador(db: Session, usuario: Usuario) -> None:
     if usuario.perfil != PERFIL_ADMINISTRADOR or not usuario.ativo:
         return

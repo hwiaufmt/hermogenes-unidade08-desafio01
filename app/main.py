@@ -1,3 +1,4 @@
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -5,9 +6,17 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
-from app.config import CHAVE_SECRETA, DURACAO_SESSAO_SEGUNDOS
+from app.config import (
+    ADMIN_CPF,
+    ADMIN_EMAIL,
+    ADMIN_NOME,
+    ADMIN_SENHA,
+    CHAVE_SECRETA,
+    DURACAO_SESSAO_SEGUNDOS,
+)
 from app.database import Base, SessionLocal, engine
 from app.erros import tratar_validacao
 from app.routers import (
@@ -19,8 +28,25 @@ from app.routers import (
     usuarios,
 )
 from app.services.estoque import semear_categorias
+from app.services.usuarios import criar_administrador_inicial, listar_usuarios
 
 BASE_DIR = Path(__file__).parent
+registro = logging.getLogger("uvicorn.error")
+
+
+def _criar_administrador_inicial(db: Session) -> None:
+    if not (ADMIN_CPF and ADMIN_SENHA):
+        if not listar_usuarios(db):
+            registro.warning(
+                "Nenhum usuário cadastrado. Defina ESTOQUE_ADMIN_CPF e "
+                "ESTOQUE_ADMIN_SENHA para criar o primeiro administrador."
+            )
+        return
+    criado = criar_administrador_inicial(
+        db, ADMIN_CPF, ADMIN_SENHA, ADMIN_NOME, ADMIN_EMAIL
+    )
+    if criado:
+        registro.info("Administrador inicial criado (CPF %s).", criado.cpf)
 
 
 @asynccontextmanager
@@ -28,6 +54,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     Base.metadata.create_all(engine)
     with SessionLocal() as db:
         semear_categorias(db)
+        _criar_administrador_inicial(db)
     yield
 
 
