@@ -69,6 +69,9 @@ function criarGrupo(categoria, materiais, indice) {
 
   const rolavel = document.createElement("div");
   rolavel.className = "tabela-rolavel";
+  rolavel.tabIndex = 0;
+  rolavel.setAttribute("role", "region");
+  rolavel.setAttribute("aria-labelledby", tituloId);
   rolavel.append(tabela);
 
   secao.append(titulo, rolavel);

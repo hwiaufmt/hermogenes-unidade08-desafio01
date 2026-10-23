@@ -4,6 +4,8 @@
   --cor-texto: #1c2430;
   --cor-suave: #5a6574;
   --cor-borda: #d3d9e0;
+  --cor-borda-campo: #6b7685;
+  --alvo-toque: 2.75rem;
   --cor-primaria: #1f5fbf;
   --cor-primaria-escura: #174a96;
   --cor-ok: #16663a;
@@ -36,7 +38,7 @@ body {
   left: -999px;
   top: 0;
   background: var(--cor-superficie);
-  padding: 0.5rem 1rem;
+  padding: 0.75rem 1rem;
 }
 
 .pular:focus {
@@ -75,6 +77,9 @@ body {
 }
 
 .topo nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--alvo-toque);
   padding: 0.4rem 0.75rem;
   border-radius: var(--raio);
   color: var(--cor-texto);
@@ -124,8 +129,9 @@ label {
 input,
 select {
   font: inherit;
+  min-height: var(--alvo-toque);
   padding: 0.55rem 0.6rem;
-  border: 1px solid var(--cor-borda);
+  border: 1px solid var(--cor-borda-campo);
   border-radius: var(--raio);
   background: #fff;
   color: inherit;
@@ -134,6 +140,7 @@ select {
 button {
   font: inherit;
   font-weight: 600;
+  min-height: var(--alvo-toque);
   padding: 0.6rem 1.1rem;
   border: 0;
   border-radius: var(--raio);
@@ -144,6 +151,20 @@ button {
 
 button:hover {
   background: var(--cor-primaria-escura);
+}
+
+.aviso-js {
+  margin: 0;
+  padding: 0.75rem var(--espaco);
+  background: var(--cor-erro-fundo);
+  color: var(--cor-erro);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto !important;
+    transition: none !important;
+  }
 }
 
 .mensagem {
