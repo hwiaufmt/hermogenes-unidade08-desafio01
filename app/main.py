@@ -1,0 +1,33 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from pathlib import Path
+
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+
+from app.database import Base, SessionLocal, engine
+from app.routers import categorias, materiais, movimentacoes, paginas
+from app.services.estoque import semear_categorias
+
+BASE_DIR = Path(__file__).parent
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    Base.metadata.create_all(engine)
+    with SessionLocal() as db:
+        semear_categorias(db)
+    yield
+
+
+app = FastAPI(title="Controle de Materiais de Escritório", lifespan=lifespan)
+app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
+app.include_router(categorias.router)
+app.include_router(materiais.router)
+app.include_router(movimentacoes.router)
+app.include_router(paginas.router)
+
+
+@app.get("/saude")
+def saude() -> dict[str, str]:
+    return {"status": "ok"}

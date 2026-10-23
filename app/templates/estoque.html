@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block titulo %}Estoque{% endblock %}
+{% block cabecalho %}Estoque{% endblock %}
+
+{% block conteudo %}
+<p id="mensagem" class="mensagem" role="status" aria-live="polite" hidden></p>
+
+<div class="tabela-rolavel">
+  <table>
+    <caption class="so-leitor">Materiais cadastrados e seus saldos</caption>
+    <thead>
+      <tr>
+        <th scope="col">Material</th>
+        <th scope="col">Categoria</th>
+        <th scope="col" class="num">Saldo</th>
+        <th scope="col" class="num">Mínimo</th>
+        <th scope="col">Status</th>
+      </tr>
+    </thead>
+    <tbody id="lista-materiais"></tbody>
+  </table>
+</div>
+<p id="vazio" hidden>Nenhum material cadastrado. <a href="/materiais/novo">Cadastrar o primeiro</a>.</p>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ url_for('static', path='js/estoque.js') }}"></script>
+{% endblock %}

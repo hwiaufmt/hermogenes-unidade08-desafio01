@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}{% endblock %} · Controle de Materiais</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='css/styles.css') }}">
+</head>
+<body>
+  <a class="pular" href="#conteudo">Pular para o conteúdo</a>
+  <header class="topo">
+    <p class="marca">Controle de Materiais</p>
+    <nav aria-label="Principal">
+      <a href="/" {% if ativa == 'estoque' %}aria-current="page"{% endif %}>Estoque</a>
+      <a href="/movimentar" {% if ativa == 'movimentar' %}aria-current="page"{% endif %}>Movimentar</a>
+      <a href="/materiais/novo" {% if ativa == 'cadastro' %}aria-current="page"{% endif %}>Cadastro</a>
+    </nav>
+  </header>
+  <main id="conteudo">
+    <h1>{% block cabecalho %}{% endblock %}</h1>
+    {% block conteudo %}{% endblock %}
+  </main>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block titulo %}Movimentar{% endblock %}
+{% block cabecalho %}Movimentar{% endblock %}
+
+{% block conteudo %}
+<p id="mensagem" class="mensagem" role="status" aria-live="polite" hidden></p>
+
+<section aria-labelledby="titulo-movimento">
+  <h2 id="titulo-movimento">Registrar entrada ou saída</h2>
+  <form id="form-movimento" novalidate>
+    <div class="campo">
+      <label for="movimento-material">Material</label>
+      <select id="movimento-material" name="material_id" required>
+        <option value="">Selecione…</option>
+      </select>
+    </div>
+    <div class="campo">
+      <label for="movimento-tipo">Tipo</label>
+      <select id="movimento-tipo" name="tipo">
+        <option value="entrada">Entrada</option>
+        <option value="saida">Saída</option>
+      </select>
+    </div>
+    <div class="campo">
+      <label for="movimento-quantidade">Quantidade</label>
+      <input id="movimento-quantidade" name="quantidade" type="number" min="1" step="1" inputmode="numeric" required>
+    </div>
+    <button type="submit">Registrar</button>
+  </form>
+</section>
+
+<section aria-labelledby="titulo-saldo" id="painel-saldo" hidden>
+  <h2 id="titulo-saldo">Saldo atual</h2>
+  <dl class="saldo" aria-live="polite">
+    <div><dt>Material</dt><dd id="saldo-nome"></dd></div>
+    <div><dt>Saldo</dt><dd id="saldo-quantidade"></dd></div>
+    <div><dt>Status</dt><dd id="saldo-status" class="status"></dd></div>
+  </dl>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ url_for('static', path='js/movimentar.js') }}"></script>
+{% endblock %}

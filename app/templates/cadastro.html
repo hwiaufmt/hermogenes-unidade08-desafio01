@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block titulo %}Cadastro{% endblock %}
+{% block cabecalho %}Cadastro{% endblock %}
+
+{% block conteudo %}
+<p id="mensagem" class="mensagem" role="status" aria-live="polite" hidden></p>
+
+<section aria-labelledby="titulo-material">
+  <h2 id="titulo-material">Novo material</h2>
+  <form id="form-material" novalidate>
+    <div class="campo">
+      <label for="material-nome">Nome</label>
+      <input id="material-nome" name="nome" type="text" maxlength="150" required>
+    </div>
+    <div class="campo">
+      <label for="material-categoria">Categoria</label>
+      <select id="material-categoria" name="categoria_id" required>
+        <option value="">Selecione…</option>
+      </select>
+    </div>
+    <div class="campo">
+      <label for="material-quantidade">Estoque inicial</label>
+      <input id="material-quantidade" name="quantidade" type="number" min="0" step="1" value="0" inputmode="numeric">
+    </div>
+    <div class="campo">
+      <label for="material-minimo">Estoque mínimo</label>
+      <input id="material-minimo" name="estoque_minimo" type="number" min="0" step="1" value="0" inputmode="numeric">
+    </div>
+    <button type="submit">Cadastrar material</button>
+  </form>
+</section>
+
+<section aria-labelledby="titulo-categoria">
+  <h2 id="titulo-categoria">Nova categoria</h2>
+  <form id="form-categoria" novalidate>
+    <div class="campo">
+      <label for="categoria-nome">Nome da categoria</label>
+      <input id="categoria-nome" name="nome" type="text" maxlength="100" required>
+    </div>
+    <button type="submit">Criar categoria</button>
+  </form>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ url_for('static', path='js/cadastro.js') }}"></script>
+{% endblock %}
