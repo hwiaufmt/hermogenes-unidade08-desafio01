@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block titulo %}Entrar{% endblock %}
+{% block cabecalho %}Entrar{% endblock %}
+
+{% block conteudo %}
+<p id="mensagem" class="mensagem" role="status" aria-live="polite" hidden></p>
+
+<section class="cartao-login" aria-labelledby="titulo-login">
+  <h2 id="titulo-login">Acesse com seu CPF e senha</h2>
+  <form id="form-login" class="form-vertical" novalidate>
+    <div class="campo">
+      <label for="login-cpf">CPF</label>
+      <input id="login-cpf" name="cpf" type="text" inputmode="numeric" autocomplete="username" required>
+    </div>
+    <div class="campo">
+      <label for="login-senha">Senha</label>
+      <input id="login-senha" name="senha" type="password" autocomplete="current-password" required>
+    </div>
+    <button type="submit">Entrar</button>
+  </form>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ url_for('static', path='js/login.js') }}"></script>
+{% endblock %}

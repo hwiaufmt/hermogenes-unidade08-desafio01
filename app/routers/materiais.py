@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -20,9 +20,14 @@ LER_MATERIAIS = exigir(Acao.CONSULTAR_ESTOQUE, Acao.MOVIMENTAR)
 @router.get(
     "", response_model=list[MaterialSaida], dependencies=[Depends(LER_MATERIAIS)]
 )
-def listar(db: DbSessao, categoria_id: int | None = None):
+def listar(
+    db: DbSessao,
+    categoria_id: int | None = None,
+    q: str | None = None,
+    status: Literal["Disponível", "Indisponível"] | None = None,
+):
     try:
-        return estoque.listar_materiais(db, categoria_id)
+        return estoque.listar_materiais(db, categoria_id, busca=q, status=status)
     except estoque.CategoriaInexistenteError as erro:
         raise HTTPException(status_code=404, detail=str(erro)) from erro
 

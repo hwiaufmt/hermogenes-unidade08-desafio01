@@ -17,6 +17,9 @@ export async function requisitar(url, opcoes = {}) {
     throw new Error("Falha de conexão com o servidor.");
   }
   const corpo = await resposta.json().catch(() => null);
+  if (resposta.status === 401 && url !== "/login") {
+    window.location.assign("/login");
+  }
   if (!resposta.ok) throw new Error(mensagemDeErro(corpo));
   return corpo;
 }

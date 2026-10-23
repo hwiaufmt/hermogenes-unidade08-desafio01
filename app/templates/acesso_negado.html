@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block titulo %}Acesso negado{% endblock %}
+{% block cabecalho %}Acesso negado{% endblock %}
+
+{% block conteudo %}
+<section>
+  <p>Seu perfil (<strong>{{ usuario.perfil }}</strong>) não tem permissão para acessar esta página.</p>
+  {% if menu %}
+  <p><a href="{{ menu[0].url }}">Ir para {{ menu[0].rotulo }}</a></p>
+  {% else %}
+  <p>Seu perfil não tem acesso a nenhuma tela. Procure um administrador.</p>
+  {% endif %}
+</section>
+{% endblock %}

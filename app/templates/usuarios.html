@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block titulo %}Usuários{% endblock %}
+{% block cabecalho %}Usuários{% endblock %}
+
+{% block conteudo %}
+<p id="mensagem" class="mensagem" role="status" aria-live="polite" hidden></p>
+
+<section aria-labelledby="titulo-form-usuario">
+  <h2 id="titulo-form-usuario">Novo usuário</h2>
+  <form id="form-usuario" novalidate>
+    <div class="campo">
+      <label for="usuario-nome">Nome</label>
+      <input id="usuario-nome" name="nome" type="text" maxlength="150" required>
+    </div>
+    <div class="campo">
+      <label for="usuario-cpf">CPF</label>
+      <input id="usuario-cpf" name="cpf" type="text" inputmode="numeric" required>
+    </div>
+    <div class="campo">
+      <label for="usuario-email">E-mail</label>
+      <input id="usuario-email" name="email" type="email" required>
+    </div>
+    <div class="campo">
+      <label for="usuario-perfil">Perfil</label>
+      <select id="usuario-perfil" name="perfil" required>
+        {% for perfil in perfis %}
+        <option value="{{ perfil }}">{{ perfil|capitalize }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="campo">
+      <label for="usuario-senha">Senha</label>
+      <input id="usuario-senha" name="senha" type="password" autocomplete="new-password">
+      <small id="dica-senha">Mínimo de 8 caracteres.</small>
+    </div>
+    <div class="acoes-form">
+      <button type="submit" id="botao-salvar">Cadastrar usuário</button>
+      <button type="button" id="botao-cancelar" class="botao-secundario" hidden>Cancelar edição</button>
+    </div>
+  </form>
+</section>
+
+<section aria-labelledby="titulo-lista-usuarios">
+  <h2 id="titulo-lista-usuarios">Usuários cadastrados</h2>
+  <div class="tabela-rolavel" tabindex="0" role="region" aria-labelledby="titulo-lista-usuarios">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Nome</th>
+          <th scope="col">CPF</th>
+          <th scope="col">E-mail</th>
+          <th scope="col">Perfil</th>
+          <th scope="col">Situação</th>
+          <th scope="col">Ações</th>
+        </tr>
+      </thead>
+      <tbody id="lista-usuarios"></tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ url_for('static', path='js/usuarios.js') }}"></script>
+{% endblock %}

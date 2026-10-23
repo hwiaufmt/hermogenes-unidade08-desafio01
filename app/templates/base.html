@@ -11,16 +11,23 @@
   <noscript><p class="aviso-js">Esta página precisa de JavaScript ativado para funcionar.</p></noscript>
   <header class="topo">
     <p class="marca">Controle de Materiais</p>
+    {% if usuario %}
     <nav aria-label="Principal">
-      <a href="/" {% if ativa == 'estoque' %}aria-current="page"{% endif %}>Estoque</a>
-      <a href="/movimentar" {% if ativa == 'movimentar' %}aria-current="page"{% endif %}>Movimentar</a>
-      <a href="/materiais/novo" {% if ativa == 'cadastro' %}aria-current="page"{% endif %}>Cadastro</a>
+      {% for item in menu %}
+      <a href="{{ item.url }}" {% if ativa == item.chave %}aria-current="page"{% endif %}>{{ item.rotulo }}</a>
+      {% endfor %}
     </nav>
+    <div class="sessao">
+      <span class="sessao-nome">{{ usuario.nome }} <small>({{ usuario.perfil }})</small></span>
+      <button type="button" id="botao-sair" class="botao-secundario">Sair</button>
+    </div>
+    {% endif %}
   </header>
   <main id="conteudo">
     <h1>{% block cabecalho %}{% endblock %}</h1>
     {% block conteudo %}{% endblock %}
   </main>
+  {% if usuario %}<script type="module" src="{{ url_for('static', path='js/sair.js') }}"></script>{% endif %}
   {% block scripts %}{% endblock %}
 </body>
 </html>

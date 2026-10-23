@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block titulo %}Pesquisa{% endblock %}
+{% block cabecalho %}Pesquisa{% endblock %}
+
+{% block conteudo %}
+<p id="mensagem" class="mensagem" role="status" aria-live="polite" hidden></p>
+
+<form id="filtros" class="filtros" role="search" aria-label="Filtrar materiais" novalidate>
+  <div class="campo">
+    <label for="filtro-busca">Buscar por nome</label>
+    <input id="filtro-busca" type="search" autocomplete="off">
+  </div>
+  <div class="campo">
+    <label for="filtro-categoria">Categoria</label>
+    <select id="filtro-categoria">
+      <option value="">Todas as categorias</option>
+    </select>
+  </div>
+  <div class="campo">
+    <label for="filtro-status">Status</label>
+    <select id="filtro-status">
+      <option value="">Todos</option>
+      <option value="Disponível">Disponível</option>
+      <option value="Indisponível">Indisponível</option>
+    </select>
+  </div>
+</form>
+
+<p id="resumo" class="resumo" role="status" aria-live="polite"></p>
+<div id="grupos"></div>
+<p id="vazio" hidden></p>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ url_for('static', path='js/pesquisa.js') }}"></script>
+{% endblock %}

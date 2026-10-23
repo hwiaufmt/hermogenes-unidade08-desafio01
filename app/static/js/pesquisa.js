@@ -1,9 +1,15 @@
 import { mostrarMensagem, requisitar } from "./api.js";
 
+const ESPERA_DA_BUSCA_MS = 250;
+
 const mensagem = document.getElementById("mensagem");
-const filtro = document.getElementById("filtro-categoria");
+const formFiltros = document.getElementById("filtros");
+const filtroBusca = document.getElementById("filtro-busca");
+const filtroCategoria = document.getElementById("filtro-categoria");
+const filtroStatus = document.getElementById("filtro-status");
 const grupos = document.getElementById("grupos");
 const aviso = document.getElementById("vazio");
+const resumo = document.getElementById("resumo");
 
 function criarCelula(texto, classe) {
   const celula = document.createElement("td");
@@ -88,9 +94,22 @@ function agruparPorCategoria(materiais) {
   return [...porCategoria].sort(([a], [b]) => a.localeCompare(b, "pt-BR"));
 }
 
+function haFiltroAtivo() {
+  return (
+    filtroBusca.value.trim() !== "" ||
+    filtroCategoria.value !== "" ||
+    filtroStatus.value !== ""
+  );
+}
+
 function textoVazio() {
-  if (filtro.value === "") return "Nenhum material cadastrado.";
-  return "Nenhum material nesta categoria.";
+  return haFiltroAtivo()
+    ? "Nenhum material encontrado com esses filtros."
+    : "Nenhum material cadastrado.";
+}
+
+function textoResumo(total) {
+  return total === 1 ? "1 material encontrado." : `${total} materiais encontrados.`;
 }
 
 function renderizar(materiais) {
@@ -100,12 +119,22 @@ function renderizar(materiais) {
   );
   aviso.textContent = textoVazio();
   aviso.hidden = materiais.length > 0;
+  resumo.textContent = materiais.length > 0 ? textoResumo(materiais.length) : "";
+}
+
+function montarConsulta() {
+  const parametros = new URLSearchParams();
+  const busca = filtroBusca.value.trim();
+  if (busca !== "") parametros.set("q", busca);
+  if (filtroCategoria.value !== "") parametros.set("categoria_id", filtroCategoria.value);
+  if (filtroStatus.value !== "") parametros.set("status", filtroStatus.value);
+  const texto = parametros.toString();
+  return texto === "" ? "" : `?${texto}`;
 }
 
 async function carregarMateriais() {
-  const consulta = filtro.value === "" ? "" : `?categoria_id=${filtro.value}`;
   try {
-    renderizar(await requisitar(`/materiais${consulta}`));
+    renderizar(await requisitar(`/materiais${montarConsulta()}`));
   } catch (erro) {
     mostrarMensagem(mensagem, erro.message, "erro");
   }
@@ -114,8 +143,16 @@ async function carregarMateriais() {
 async function carregarCategorias() {
   const categorias = await requisitar("/categorias");
   for (const categoria of categorias) {
-    filtro.add(new Option(categoria.nome, categoria.id));
+    filtroCategoria.add(new Option(categoria.nome, categoria.id));
   }
+}
+
+function aoDigitarBusca() {
+  let temporizador = null;
+  return () => {
+    clearTimeout(temporizador);
+    temporizador = setTimeout(carregarMateriais, ESPERA_DA_BUSCA_MS);
+  };
 }
 
 async function iniciar() {
@@ -127,5 +164,8 @@ async function iniciar() {
   await carregarMateriais();
 }
 
-filtro.addEventListener("change", carregarMateriais);
+formFiltros.addEventListener("submit", (evento) => evento.preventDefault());
+filtroBusca.addEventListener("input", aoDigitarBusca());
+filtroCategoria.addEventListener("change", carregarMateriais);
+filtroStatus.addEventListener("change", carregarMateriais);
 iniciar();

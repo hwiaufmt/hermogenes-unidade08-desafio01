@@ -27,6 +27,12 @@ from app.routers import (
     paginas,
     usuarios,
 )
+from app.routers.paginas import (
+    AcessoNegadoError,
+    LoginNecessarioError,
+    tratar_acesso_negado,
+    tratar_login_necessario,
+)
 from app.services.estoque import semear_categorias
 from app.services.usuarios import criar_administrador_inicial, listar_usuarios
 
@@ -66,6 +72,8 @@ app.add_middleware(
     same_site="lax",
 )
 app.add_exception_handler(RequestValidationError, tratar_validacao)
+app.add_exception_handler(LoginNecessarioError, tratar_login_necessario)
+app.add_exception_handler(AcessoNegadoError, tratar_acesso_negado)
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 app.include_router(autenticacao.router)
 app.include_router(categorias.router)

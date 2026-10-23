@@ -1,4 +1,4 @@
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
@@ -58,7 +58,12 @@ def calcular_status(quantidade: int) -> str:
     return STATUS_INDISPONIVEL if quantidade == 0 else STATUS_DISPONIVEL
 
 
-def listar_materiais(db: Session, categoria_id: int | None = None) -> list[Material]:
+def listar_materiais(
+    db: Session,
+    categoria_id: int | None = None,
+    busca: str | None = None,
+    status: str | None = None,
+) -> list[Material]:
     consulta = (
         select(Material).options(joinedload(Material.categoria)).order_by(Material.nome)
     )
@@ -66,6 +71,15 @@ def listar_materiais(db: Session, categoria_id: int | None = None) -> list[Mater
         if db.get(Categoria, categoria_id) is None:
             raise CategoriaInexistenteError(categoria_id)
         consulta = consulta.where(Material.categoria_id == categoria_id)
+    if busca and busca.strip():
+        termo = busca.strip().lower()
+        consulta = consulta.where(
+            func.lower(Material.nome).contains(termo, autoescape=True)
+        )
+    if status == STATUS_INDISPONIVEL:
+        consulta = consulta.where(Material.quantidade == 0)
+    elif status == STATUS_DISPONIVEL:
+        consulta = consulta.where(Material.quantidade > 0)
     return list(db.scalars(consulta))
 
 

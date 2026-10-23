@@ -183,12 +183,83 @@ button:hover {
   color: var(--cor-erro);
 }
 
-.filtro {
+.filtros {
   display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  max-width: 20rem;
-  margin-bottom: var(--espaco);
+  flex-wrap: wrap;
+  gap: 0 var(--espaco);
+  margin-bottom: 0.5rem;
+}
+
+.filtros .campo {
+  flex: 1 1 12rem;
+}
+
+.resumo {
+  min-height: 1.5rem;
+  margin: 0 0 0.5rem;
+  color: var(--cor-suave);
+}
+
+.sessao {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.sessao-nome small {
+  color: var(--cor-suave);
+}
+
+.botao-secundario {
+  background: var(--cor-superficie);
+  color: var(--cor-primaria);
+  border: 1px solid var(--cor-primaria);
+}
+
+.botao-secundario:hover {
+  background: var(--cor-fundo);
+}
+
+.botao-pequeno {
+  min-height: var(--alvo-toque);
+  padding: 0.3rem 0.7rem;
+  font-size: 0.9rem;
+}
+
+.sem-quebra {
+  white-space: nowrap;
+}
+
+td.acoes {
+  white-space: nowrap;
+}
+
+td.acoes button {
+  margin: 0 0.4rem 0 0;
+}
+
+.sessao button {
+  margin: 0;
+}
+
+.acoes-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  grid-column: 1 / -1;
+}
+
+.cartao-login {
+  max-width: 24rem;
+  margin-inline: auto;
+}
+
+form.form-vertical {
+  display: block;
+}
+
+small {
+  color: var(--cor-suave);
 }
 
 #grupos h2 {
@@ -308,5 +379,10 @@ tr[data-status="Indisponível"] td:first-child {
 
   button {
     margin-bottom: 0.75rem;
+  }
+
+  td.acoes button,
+  .sessao button {
+    margin-bottom: 0;
   }
 }

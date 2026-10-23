@@ -11,6 +11,8 @@ CAMPOS = {
     "email": "e-mail",
     "perfil": "perfil",
     "senha": "senha",
+    "status": "status",
+    "q": "busca",
 }
 PREFIXO_PYDANTIC = "Value error, "
 TIPOS_INTEIRO = {"int_type", "int_parsing", "int_from_float"}

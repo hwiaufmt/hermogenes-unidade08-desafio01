@@ -11,12 +11,17 @@ from app.permissoes import Acao, perfil_pode
 DbSessao = Annotated[Session, Depends(get_db)]
 
 
-def usuario_atual(request: Request, db: DbSessao) -> Usuario:
-    """Usuário da sessão. Relê o banco a cada requisição: inativar um usuário
-    encerra o acesso dele imediatamente, mesmo com o cookie ainda válido."""
+def usuario_da_sessao(request: Request, db: Session) -> Usuario | None:
+    """Usuário ativo da sessão, ou None. Relê o banco a cada requisição: inativar
+    um usuário encerra o acesso dele imediatamente, mesmo com o cookie válido."""
     usuario_id = request.session.get("usuario_id")
     usuario = db.get(Usuario, usuario_id) if usuario_id is not None else None
-    if usuario is None or not usuario.ativo:
+    return usuario if usuario is not None and usuario.ativo else None
+
+
+def usuario_atual(request: Request, db: DbSessao) -> Usuario:
+    usuario = usuario_da_sessao(request, db)
+    if usuario is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="É necessário entrar no sistema.",
