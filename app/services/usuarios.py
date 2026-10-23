@@ -5,8 +5,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models import Usuario
-from app.seguranca import gerar_hash
+from app.seguranca import gerar_hash, verificar_senha
 
+_HASH_FALSO = gerar_hash("senha-inexistente")
 PERFIL_ADMINISTRADOR = "administrador"
 PERFIL_ESTOQUISTA = "estoquista"
 PERFIL_OPERADOR = "operador"
@@ -30,6 +31,11 @@ class UltimoAdministradorError(Exception):
         super().__init__(
             "Não é possível inativar ou alterar o perfil do último administrador ativo."
         )
+
+
+class CredenciaisInvalidasError(Exception):
+    def __init__(self) -> None:
+        super().__init__("CPF ou senha inválidos.")
 
 
 def normalizar_cpf(cpf: str) -> str:
@@ -66,6 +72,17 @@ def obter_usuario(db: Session, usuario_id: int) -> Usuario:
     usuario = db.get(Usuario, usuario_id)
     if usuario is None:
         raise UsuarioInexistenteError(usuario_id)
+    return usuario
+
+
+def autenticar(db: Session, cpf: str, senha: str) -> Usuario:
+    usuario = db.scalar(select(Usuario).where(Usuario.cpf == normalizar_cpf(cpf)))
+    # Sempre calcula o hash, mesmo sem usuário, para o tempo de resposta não
+    # revelar se o CPF existe.
+    hash_guardado = usuario.senha_hash if usuario else _HASH_FALSO
+    senha_confere = verificar_senha(senha, hash_guardado)
+    if usuario is None or not usuario.ativo or not senha_confere:
+        raise CredenciaisInvalidasError()
     return usuario
 
 

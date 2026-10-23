@@ -117,6 +117,11 @@ class UsuarioAtualizar(BaseModel):
         return None if valor is None else _validar_senha(valor)
 
 
+class LoginEntrada(BaseModel):
+    cpf: str
+    senha: str
+
+
 class UsuarioSaida(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
