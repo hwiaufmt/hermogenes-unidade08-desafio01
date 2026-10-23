@@ -1,6 +1,6 @@
 # Controle de Materiais de Escritório
 
-Aplicação web para controlar o estoque de materiais de escritório (papelaria, escrita, informática etc.): cadastrar materiais por categoria, registrar entradas e saídas e consultar o saldo atualizado.
+Aplicação web para controlar o estoque de materiais de escritório (papelaria, escrita, informática etc.): cadastrar materiais por categoria, registrar entradas e saídas, consultar o saldo atualizado e controlar **quem pode fazer o quê**, com login e três perfis de usuário.
 
 Este é um **MVP** que valida o ciclo *cadastrar → entrada → saída → consultar saldo*, com regras de negócio confiáveis.
 
@@ -10,12 +10,26 @@ Este é um **MVP** que valida o ciclo *cadastrar → entrada → saída → cons
 - **Cadastro de material:** exige categoria válida; estoque inicial e estoque mínimo opcionais (padrão 0).
 - **Entrada e saída:** a entrada soma ao saldo; a saída subtrai e é **bloqueada** se o saldo for insuficiente.
 - **Status automático:** saldo 0 → **Indisponível**; qualquer outro → **Disponível**. Não há campo editável.
-- **Estoque:** materiais e saldos agrupados por categoria, com filtro.
+- **Pesquisa:** materiais e saldos agrupados por categoria, com busca por nome e filtros de categoria e status.
+- **Usuários:** nome, **CPF único** e e-mail; cadastrar, editar, inativar e reativar.
+- **Login e perfis:** entrada por CPF e senha; três perfis com permissões diferentes (tabela abaixo).
 - Cada entrada e saída grava uma movimentação (tipo, quantidade, saldo após, data UTC) na mesma transação do saldo.
+
+## Perfis e permissões
+
+| Ação | Estoquista | Operador | Administrador |
+|---|---|---|---|
+| Criar categoria | ✅ | | |
+| Cadastrar material (estoque inicial e mínimo) | ✅ | | |
+| Pesquisar / consultar estoque | ✅ | ✅ | |
+| Movimentar (entrada e saída) | | ✅ | |
+| Manter usuários | | | ✅ |
+
+As permissões valem **na API e nas telas**: sem login a API responde `401`, e sem permissão `403`. A matriz fica em [`app/permissoes.py`](app/permissoes.py).
 
 ## Stack
 
-Python 3.11+, FastAPI, Pydantic v2, SQLAlchemy 2 com SQLite, Jinja2, HTML/CSS/JavaScript (ES modules, sem framework), pytest + httpx e ruff.
+Python 3.11+, FastAPI, Pydantic v2, SQLAlchemy 2 com SQLite, Jinja2, HTML/CSS/JavaScript (ES modules, sem framework), sessão em cookie assinado (`itsdangerous`), pytest + httpx e ruff.
 
 ## Como rodar
 
@@ -36,14 +50,26 @@ python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Com o ambiente ativo:
+### Primeiro acesso
 
-```bash
+O sistema exige login, e no início não há usuários. Defina as variáveis do **primeiro administrador** antes de iniciar (ele só é criado se ainda não existir nenhum usuário):
+
+```powershell
+$env:ESTOQUE_ADMIN_CPF = "SEU-CPF"            # CPF válido, com ou sem máscara
+$env:ESTOQUE_ADMIN_SENHA = "uma-senha-forte"  # mínimo de 8 caracteres
+$env:ESTOQUE_SECRET_KEY = "um-valor-longo-e-fixo"
 uvicorn app.main:app --reload
 ```
 
-Abra <http://localhost:8000>. A documentação interativa da API fica em `/docs`.
-O banco é o arquivo `estoque.db`, criado na raiz ao iniciar, junto com o seed das categorias.
+No Linux/macOS, use `export NOME=valor`. Abra <http://localhost:8000>, entre com esse CPF e senha e, na tela **Usuários**, cadastre estoquistas e operadores.
+
+| Variável | Para quê |
+|---|---|
+| `ESTOQUE_ADMIN_CPF`, `ESTOQUE_ADMIN_SENHA` | criam o primeiro administrador |
+| `ESTOQUE_ADMIN_NOME`, `ESTOQUE_ADMIN_EMAIL` | opcionais (padrão: `Administrador`, `administrador@estoque.local`) |
+| `ESTOQUE_SECRET_KEY` | assina o cookie de sessão; sem ela, as sessões se perdem a cada reinício |
+
+A documentação interativa da API fica em `/docs`. O banco é o arquivo `estoque.db`, criado na raiz ao iniciar, junto com o seed das categorias. Não há migração de banco: ao atualizar o código, tabelas novas são criadas sozinhas, mas colunas novas em tabelas existentes exigem recriar o banco.
 
 ## Como testar
 
@@ -52,29 +78,39 @@ pytest                          # testes (usam SQLite em memória)
 ruff check . && ruff format .   # lint e formatação
 ```
 
-Cada critério de aceite tem testes nomeados com o ID (`test_ca01_...` a `test_ca06_...`).
+Cada critério de aceite tem testes nomeados com o ID (`test_ca01_...` a `test_ca08_...`). Os testes de acesso conferem, para cada perfil e cada rota, se o resultado é permitido ou `403`, usando a matriz real.
 
 ## Páginas
 
-| Rota | Descrição |
-|---|---|
-| `/` | **Estoque:** saldos agrupados por categoria, com filtro |
-| `/movimentar` | **Movimentar:** registrar entrada ou saída e ver o saldo |
-| `/materiais/novo` | **Cadastro:** novo material e nova categoria |
+| Rota | Descrição | Quem acessa |
+|---|---|---|
+| `/login` | **Entrar** com CPF e senha | público |
+| `/` | leva cada perfil à sua primeira tela | logado |
+| `/pesquisa` | **Pesquisa:** saldos agrupados por categoria, com busca e filtros | estoquista, operador |
+| `/movimentar` | **Movimentar:** registrar entrada ou saída e ver o saldo | operador |
+| `/materiais/novo` | **Cadastro:** novo material e nova categoria | estoquista |
+| `/gestao/usuarios` | **Usuários:** cadastrar, editar, inativar e reativar | administrador |
+
+Sem login, as páginas redirecionam para `/login`. Sem permissão, mostram "Acesso negado" (`403`).
 
 ## API
 
 | Método e rota | Descrição | Erros |
 |---|---|---|
-| `GET /categorias` | Lista as categorias | |
+| `POST /login` | Entra com `{"cpf", "senha"}` | `401` CPF ou senha inválidos |
+| `POST /logout` | Encerra a sessão | |
+| `GET /me` | Usuário logado | `401` |
+| `GET /categorias` | Lista as categorias | `401`, `403` |
 | `POST /categorias` | Cria categoria (`nome` único) | `422` vazio ou duplicado |
-| `GET /materiais` | Lista materiais; filtro `?categoria_id=` | `404` categoria inexistente |
+| `GET /materiais` | Lista materiais; filtros `?categoria_id=`, `?q=`, `?status=` | `404` categoria inexistente, `422` status inválido |
 | `GET /materiais/{id}` | Consulta um material | `404` |
 | `POST /materiais` | Cadastra material | `422` categoria ausente/inválida, valores inválidos |
 | `POST /materiais/{id}/entrada` | Soma `quantidade` ao saldo | `404`, `422` |
 | `POST /materiais/{id}/saida` | Subtrai `quantidade` do saldo | `404`, `422`, `409` saldo insuficiente |
+| `GET/POST /usuarios`, `GET/PUT /usuarios/{id}` | Mantém usuários | `409` CPF duplicado, `422` CPF/e-mail/senha inválidos |
+| `POST /usuarios/{id}/inativar` e `/reativar` | Inativa ou reativa | `409` último administrador |
 
-Entrada e saída recebem `{"quantidade": n}` (inteiro maior que zero) e devolvem o material atualizado, com `quantidade` e `status`. Todas as mensagens de erro, inclusive as de validação (`422`), vêm em português no campo `detail`, como texto.
+Todas as rotas, exceto `POST /login`, exigem login (`401`) e a permissão do perfil (`403`). Entrada e saída recebem `{"quantidade": n}` (inteiro maior que zero) e devolvem o material atualizado, com `quantidade` e `status`. Todas as mensagens de erro, inclusive as de validação (`422`), vêm em português no campo `detail`, como texto.
 
 ## Regras de negócio
 
@@ -83,32 +119,44 @@ Entrada e saída recebem `{"quantidade": n}` (inteiro maior que zero) e devolvem
 - A verificação de saldo e a subtração na saída são **atômicas** (`UPDATE ... WHERE quantidade >= :qtd`).
 - Saldo e movimentação são gravados na mesma transação (tudo ou nada).
 - `estoque_minimo` é guardado e exibido; não dispara alerta no MVP.
+- O **CPF** é único (com dígitos verificadores válidos); CPF repetido, mesmo com máscara diferente, é recusado.
+- A senha tem pelo menos 8 caracteres e é guardada só como hash `scrypt`.
+- Usuários são **inativados**, não apagados. O último administrador ativo não pode ser inativado nem rebaixado.
+- Inativar um usuário ou mudar o perfil dele vale na próxima requisição, mesmo com a sessão aberta.
 
 ## Estrutura
 
 ```
 app/
-├── main.py            # criação do app, routers, seed
+├── main.py            # criação do app, middleware, routers, seed, admin inicial
+├── config.py          # chave da sessão e variáveis do administrador inicial
 ├── database.py        # engine, sessão, Base
-├── models.py          # Categoria, Material, Movimentacao
+├── models.py          # Categoria, Material, Movimentacao, Usuario
 ├── schemas.py         # modelos Pydantic
-├── services/estoque.py# regras de negócio
-├── routers/           # categorias, materiais, movimentacoes, paginas
-├── templates/         # base, estoque, movimentar, cadastro
+├── seguranca.py       # hash de senha
+├── permissoes.py      # matriz perfil -> ações
+├── dependencias.py    # usuario_atual, exigir(*acoes)
+├── erros.py           # mensagens de validação em português
+├── services/          # estoque.py e usuarios.py (regras de negócio)
+├── routers/           # autenticacao, categorias, materiais, movimentacoes, usuarios, paginas
+├── templates/         # base, login, acesso_negado, pesquisa, movimentar, cadastro, usuarios
 └── static/            # css e js (o JS só chama a API e renderiza)
-tests/                 # cadastro, categorias, entrada, saida, estoque, paginas
+docs/                  # guia de uso, API, arquitetura
+tests/                 # um arquivo por área; conftest.py com os fixtures de login
 ```
 
-Camadas: router (HTTP) → service (regra de negócio) → models (dados). Nenhuma regra de negócio fica nos routers nem no JavaScript.
+Camadas: router (HTTP) → service (regra de negócio) → models (dados). Nenhuma regra de negócio fica nos routers nem no JavaScript, e quem pode o quê fica só na matriz de permissões.
 
 ## Documentação
 
-- [Guia de uso](docs/guia-de-uso.md): como usar as telas.
+- [Guia de uso](docs/guia-de-uso.md): como usar as telas, por perfil.
 - [Referência da API](docs/api.md): rotas, corpos, respostas e mensagens de erro.
-- [Arquitetura](docs/arquitetura.md): camadas, modelo de dados, fluxo de uma saída e decisões de integridade.
+- [Arquitetura](docs/arquitetura.md): camadas, modelo de dados, autenticação, permissões e decisões de integridade.
 
-## Fora do escopo do MVP
+## Fora do escopo
 
-Autenticação, aprovação de requisições, fornecedores e notas fiscais, relatórios e dashboards, notificações, integrações, multi-filial, edição/exclusão de movimentações, histórico em tela, exportação e indicador de estoque baixo.
+Aprovação de requisições, fornecedores e notas fiscais, relatórios e dashboards, notificações, integrações, multi-filial, edição/exclusão de movimentações, histórico em tela, exportação e indicador de estoque baixo.
+
+Também fora do escopo por ora: troca e recuperação de senha pelo próprio usuário, limite de tentativas de login, edição de CPF e registrar **quem** fez cada movimentação.
 
 Mais detalhes de contexto e decisões do projeto estão em [`claude.md`](claude.md).

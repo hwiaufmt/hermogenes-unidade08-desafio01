@@ -2,15 +2,65 @@
 
 Como usar o **Controle de Materiais de Escritório** pelo navegador. Para instalar e iniciar o app, veja o [README](../README.md).
 
-Com o app rodando, abra <http://localhost:8000>. A barra do topo leva às três telas: **Estoque**, **Movimentar** e **Cadastro**.
+Com o app rodando, abra <http://localhost:8000>. Você precisa **entrar com CPF e senha**. O que aparece na barra do topo depende do seu **perfil**.
+
+## Perfis
+
+| Perfil | O que faz | Telas |
+|---|---|---|
+| **Estoquista** | cadastra materiais (com estoque inicial e mínimo), cria categorias e consulta o estoque | Pesquisa, Cadastro |
+| **Operador** | registra entradas e saídas e pesquisa o estoque | Pesquisa, Movimentar |
+| **Administrador** | mantém os usuários (e só isso) | Usuários |
+
+Cada pessoa tem um único perfil. Se você tentar abrir uma tela que o seu perfil não permite, aparece "Acesso negado" com um link para a sua tela inicial.
+
+## Entrar e sair
+
+1. Abra o endereço do sistema. Sem login, você é levado à tela **Entrar**.
+2. Digite o **CPF** (com ou sem pontos e traço) e a **senha**, e clique em **Entrar**.
+3. Você cai na primeira tela do seu perfil. Seu nome e perfil aparecem no canto superior direito.
+4. Para sair, clique em **Sair**.
+
+Se o CPF ou a senha estiverem errados, aparece "CPF ou senha inválidos.". A mensagem é a mesma para CPF inexistente, senha errada e usuário inativo, de propósito. A sessão dura 8 horas; depois disso, ou se o seu acesso for desativado, o sistema leva você de volta ao login.
+
+### Primeiro acesso (quem instala o sistema)
+
+No início não há usuários. Quem inicia o sistema define as variáveis `ESTOQUE_ADMIN_CPF` e `ESTOQUE_ADMIN_SENHA` (veja o [README](../README.md#primeiro-acesso)); o primeiro administrador é criado com elas. Esse administrador cadastra os demais usuários.
 
 ## Fluxo básico
 
-1. **Cadastro:** cadastre o material em uma categoria.
-2. **Movimentar:** registre entradas (reposição) e saídas (retiradas).
-3. **Estoque:** consulte os saldos por categoria.
+1. **Administrador:** cadastra os usuários (estoquistas e operadores).
+2. **Estoquista:** cadastra categorias e materiais, informando estoque inicial e mínimo.
+3. **Operador:** registra entradas (reposição) e saídas (retiradas).
+4. **Estoquista e operador:** consultam os saldos na **Pesquisa**.
 
-## Tela Cadastro (`/materiais/novo`)
+## Tela Usuários (`/gestao/usuarios`, administrador)
+
+### Novo usuário
+
+| Campo | Descrição |
+|---|---|
+| Nome | obrigatório |
+| CPF | obrigatório, com dígitos verificadores válidos; aceita pontos e traço. **Não pode se repetir** |
+| E-mail | obrigatório, no formato `nome@dominio.com` |
+| Perfil | administrador, estoquista ou operador |
+| Senha | mínimo de 8 caracteres |
+
+Clique em **Cadastrar usuário**. Se o CPF já existe, o sistema recusa com "Já existe um usuário com o CPF ...", mesmo que o usuário esteja inativo.
+
+### Lista de usuários
+
+A tabela mostra nome, CPF, e-mail, perfil e situação (Ativo ou Inativo), com as ações:
+
+- **Editar:** o formulário passa a editar aquele usuário. Nome, e-mail e perfil podem mudar; o **CPF fica travado**. Deixe a senha em branco para mantê-la, ou digite uma nova. Clique em **Cancelar edição** para voltar ao cadastro.
+- **Inativar:** o usuário deixa de entrar e perde o acesso na hora, mesmo logado. Nada é apagado.
+- **Reativar:** devolve o acesso.
+
+O **último administrador ativo** não pode ser inativado nem ter o perfil trocado: o sistema mostra "Não é possível inativar ou alterar o perfil do último administrador ativo.". Cadastre outro administrador antes.
+
+> Mudanças de perfil e inativações valem a partir da próxima ação da pessoa afetada.
+
+## Tela Cadastro (`/materiais/novo`, estoquista)
 
 ### Novo material
 
@@ -27,9 +77,9 @@ Clique em **Cadastrar material**. Uma mensagem confirma o cadastro, ou explica o
 
 Se a categoria que você precisa não existe, digite o nome em **Nova categoria** e clique em **Criar categoria**. Ela aparece na lista de categorias do formulário de material, já selecionada. Nomes repetidos são recusados. As categorias iniciais são Papelaria, Escrita e Informática.
 
-> Editar ou excluir categorias e materiais não faz parte do MVP.
+> Editar ou excluir categorias e materiais não faz parte do MVP. Os valores de estoque (inicial e mínimo) são informados no cadastro.
 
-## Tela Movimentar (`/movimentar`)
+## Tela Movimentar (`/movimentar`, operador)
 
 1. Escolha o **Material**. O painel **Saldo atual** mostra o saldo e o status.
 2. Escolha o **Tipo**: **Entrada** (soma ao saldo) ou **Saída** (subtrai do saldo).
@@ -42,14 +92,17 @@ Depois do registro, a mensagem informa o novo saldo e o painel é atualizado.
 
 Quando o saldo chega a 0, o status passa a **Indisponível** automaticamente. Uma nova entrada o devolve a **Disponível**, sem ação manual.
 
-## Tela Estoque (`/`)
+## Tela Pesquisa (`/pesquisa`, estoquista e operador)
 
-Mostra os materiais **agrupados por categoria**, em ordem alfabética, com saldo, estoque mínimo e status.
+Mostra os materiais **agrupados por categoria**, em ordem alfabética, com saldo, estoque mínimo e status. Os filtros se combinam:
 
-- Use o filtro **Categoria** para ver só uma categoria. "Todas as categorias" mostra todas que têm material.
-- Se a categoria escolhida não tem itens, aparece "Nenhum material nesta categoria.".
-- Materiais **Indisponíveis** ficam destacados: linha com fundo avermelhado e selo "⚠ Indisponível". Os demais mostram "✓ Disponível".
-- Em telas estreitas, a tabela rola na horizontal; ela pode ser percorrida pelo teclado.
+- **Buscar por nome:** digite parte do nome; a lista se atualiza sozinha. Maiúsculas e minúsculas não importam (para letras acentuadas, prefira digitar como está cadastrado).
+- **Categoria:** "Todas as categorias" ou uma só.
+- **Status:** Todos, Disponível ou Indisponível.
+
+Abaixo dos filtros, um resumo diz quantos materiais foram encontrados. Se nada atende aos filtros, aparece "Nenhum material encontrado com esses filtros."; se não há material cadastrado, "Nenhum material cadastrado.".
+
+Materiais **Indisponíveis** ficam destacados: linha com fundo avermelhado e selo "⚠ Indisponível". Os demais mostram "✓ Disponível". Em telas estreitas, a tabela rola na horizontal e pode ser percorrida pelo teclado.
 
 ## Mensagens de erro
 
@@ -57,17 +110,30 @@ Os erros aparecem em uma faixa no topo da tela, em português. As mais comuns:
 
 | Mensagem | O que fazer |
 |---|---|
+| CPF ou senha inválidos. | conferir o CPF e a senha; se o acesso foi desativado, falar com um administrador |
+| É necessário entrar no sistema. | entrar de novo (a sessão caiu) |
+| Você não tem permissão para realizar esta ação. | usar uma tela do seu perfil, ou pedir a mudança de perfil a um administrador |
 | Selecione uma categoria. | escolher uma categoria no formulário de material |
 | O nome do material é obrigatório. | preencher o nome |
 | O campo 'quantidade' deve ser um número inteiro. | usar um número inteiro, sem vírgula |
 | A quantidade deve ser um número inteiro maior que zero. | usar 1 ou mais |
 | Saldo insuficiente de '...': disponível N, solicitado M. | pedir no máximo o saldo disponível, ou registrar uma entrada antes |
 | Já existe uma categoria chamada '...'. | usar a categoria existente |
+| CPF inválido. | conferir os 11 dígitos |
+| Já existe um usuário com o CPF .... | o usuário já está cadastrado (talvez inativo; reative-o) |
+| A senha deve ter pelo menos 8 caracteres. | escolher uma senha maior |
+| O e-mail informado é inválido. | usar o formato `nome@dominio.com` |
 
 ## Perguntas frequentes
 
-**Onde ficam os dados?** No arquivo `estoque.db`, na pasta do projeto. Para recomeçar do zero, pare o app e apague esse arquivo; as três categorias iniciais voltam na próxima execução.
+**Onde ficam os dados?** No arquivo `estoque.db`, na pasta do projeto. Para recomeçar do zero, pare o app e apague esse arquivo; as três categorias iniciais voltam na próxima execução, e o primeiro administrador é recriado se as variáveis `ESTOQUE_ADMIN_CPF` e `ESTOQUE_ADMIN_SENHA` estiverem definidas.
 
-**Posso ver o histórico de entradas e saídas?** Não na interface. Cada movimentação é gravada no banco (tipo, quantidade, saldo após e data UTC), mas o histórico em tela está fora do escopo do MVP.
+**Esqueci minha senha.** Ainda não há recuperação de senha pelo próprio usuário. Um administrador pode definir uma nova senha editando o seu cadastro na tela Usuários.
+
+**Esqueci a senha do único administrador.** As variáveis `ESTOQUE_ADMIN_CPF` e `ESTOQUE_ADMIN_SENHA` não ajudam, porque o administrador inicial só é criado em um banco sem usuários. Nesse caso é preciso intervir no banco ou recriá-lo (perdendo os dados). Por isso, mantenha pelo menos dois administradores.
+
+**Posso ver o histórico de entradas e saídas, ou quem fez cada uma?** Não na interface. Cada movimentação é gravada no banco (tipo, quantidade, saldo após e data UTC), mas o histórico em tela e o registro de **quem** movimentou estão fora do escopo por ora.
 
 **O estoque mínimo avisa quando o saldo está baixo?** Não. No MVP ele só é guardado e exibido.
+
+**Posso apagar um usuário?** Não. Use **Inativar**, que preserva o registro.
