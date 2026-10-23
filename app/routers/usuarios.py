@@ -4,10 +4,16 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.dependencias import exigir
+from app.permissoes import Acao
 from app.schemas import UsuarioAtualizar, UsuarioCriar, UsuarioSaida
 from app.services import usuarios
 
-router = APIRouter(prefix="/usuarios", tags=["usuários"])
+router = APIRouter(
+    prefix="/usuarios",
+    tags=["usuários"],
+    dependencies=[Depends(exigir(Acao.GERIR_USUARIOS))],
+)
 
 DbSessao = Annotated[Session, Depends(get_db)]
 

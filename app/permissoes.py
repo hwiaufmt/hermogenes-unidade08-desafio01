@@ -32,24 +32,20 @@ class Acao(StrEnum):
     CONSULTAR_ESTOQUE = "consultar_estoque"
 
 
-# TODO(você): defina o que cada perfil pode fazer.
+# Quem pode o quê:
+#   - Estoquista: informa valores de estoque (estoque inicial e mínimo no
+#     cadastro), cadastra materiais e categorias, e consulta o estoque.
+#   - Operador: movimenta materiais e consulta o estoque (tela de pesquisa).
+#   - Administrador: apenas mantém os usuários.
 #
-# Regras que você descreveu:
-#   - Estoquista: informa valores de estoque, cadastra materiais e categorias.
-#   - Operador: apenas movimenta materiais e usa a tela de pesquisa.
-#   - Administrador: mantém os usuários (perfil criado por decisão sua).
-#
-# Pontos em aberto para decidir ao escrever:
-#   1. O estoquista deve poder CONSULTAR_ESTOQUE? Sem isso ele cadastra
-#      materiais "às cegas", sem ver a lista.
-#   2. O administrador também faz o trabalho de estoque, ou só gere usuários?
-#   3. Usar frozenset({Acao.X, Acao.Y}) em cada perfil.
-#
-# Enquanto estiver vazio, ninguém tem permissão para nada (falha segura).
+# Perfil ausente deste dicionário, ou com conjunto vazio, não pode nada
+# (falha segura).
 PERMISSOES: dict[str, frozenset[Acao]] = {
-    PERFIL_ADMINISTRADOR: frozenset(),
-    PERFIL_ESTOQUISTA: frozenset(),
-    PERFIL_OPERADOR: frozenset(),
+    PERFIL_ADMINISTRADOR: frozenset({Acao.GERIR_USUARIOS}),
+    PERFIL_ESTOQUISTA: frozenset(
+        {Acao.CRIAR_CATEGORIA, Acao.CADASTRAR_MATERIAL, Acao.CONSULTAR_ESTOQUE}
+    ),
+    PERFIL_OPERADOR: frozenset({Acao.MOVIMENTAR, Acao.CONSULTAR_ESTOQUE}),
 }
 
 

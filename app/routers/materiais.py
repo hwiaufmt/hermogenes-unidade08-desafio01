@@ -4,6 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.dependencias import exigir
+from app.permissoes import Acao
 from app.schemas import MaterialCriar, MaterialSaida
 from app.services import estoque
 
@@ -11,8 +13,13 @@ router = APIRouter(prefix="/materiais", tags=["materiais"])
 
 DbSessao = Annotated[Session, Depends(get_db)]
 
+# A lista de materiais também apoia a tela Movimentar.
+LER_MATERIAIS = exigir(Acao.CONSULTAR_ESTOQUE, Acao.MOVIMENTAR)
 
-@router.get("", response_model=list[MaterialSaida])
+
+@router.get(
+    "", response_model=list[MaterialSaida], dependencies=[Depends(LER_MATERIAIS)]
+)
 def listar(db: DbSessao, categoria_id: int | None = None):
     try:
         return estoque.listar_materiais(db, categoria_id)
@@ -20,7 +27,11 @@ def listar(db: DbSessao, categoria_id: int | None = None):
         raise HTTPException(status_code=404, detail=str(erro)) from erro
 
 
-@router.get("/{material_id:int}", response_model=MaterialSaida)
+@router.get(
+    "/{material_id:int}",
+    response_model=MaterialSaida,
+    dependencies=[Depends(LER_MATERIAIS)],
+)
 def obter(material_id: int, db: DbSessao):
     try:
         return estoque.obter_material(db, material_id)
@@ -28,7 +39,12 @@ def obter(material_id: int, db: DbSessao):
         raise HTTPException(status_code=404, detail=str(erro)) from erro
 
 
-@router.post("", response_model=MaterialSaida, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=MaterialSaida,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(exigir(Acao.CADASTRAR_MATERIAL))],
+)
 def criar(dados: MaterialCriar, db: DbSessao):
     try:
         return estoque.criar_material(

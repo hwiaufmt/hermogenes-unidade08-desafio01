@@ -4,10 +4,16 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.dependencias import exigir
+from app.permissoes import Acao
 from app.schemas import MaterialSaida, MovimentacaoCriar
 from app.services import estoque
 
-router = APIRouter(prefix="/materiais", tags=["movimentações"])
+router = APIRouter(
+    prefix="/materiais",
+    tags=["movimentações"],
+    dependencies=[Depends(exigir(Acao.MOVIMENTAR))],
+)
 
 DbSessao = Annotated[Session, Depends(get_db)]
 

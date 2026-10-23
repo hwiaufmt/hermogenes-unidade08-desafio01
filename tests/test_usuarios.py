@@ -5,10 +5,17 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.models import Usuario
 from app.seguranca import gerar_hash, verificar_senha
-from app.services.usuarios import cpf_valido, formatar_cpf, normalizar_cpf
+from app.services.usuarios import (
+    PERFIL_ADMINISTRADOR,
+    cpf_valido,
+    formatar_cpf,
+    normalizar_cpf,
+)
+from tests.conftest import CPFS_DE_TESTE
 
 CPF_A = "52998224725"
 CPF_B = "11144477735"
+CPF_ADMIN_DO_TESTE = CPFS_DE_TESTE[PERFIL_ADMINISTRADOR]
 
 
 def _dados(**alteracoes: object) -> dict:
@@ -75,7 +82,7 @@ def test_senha_e_gravada_somente_com_hash(
     _criar(client)
 
     with fabrica_sessao() as db:
-        usuario = db.scalar(select(Usuario))
+        usuario = db.scalar(select(Usuario).where(Usuario.cpf == CPF_A))
         assert usuario.senha_hash != "senha-segura-1"
         assert verificar_senha("senha-segura-1", usuario.senha_hash)
 
@@ -89,7 +96,7 @@ def test_ca07_cpf_duplicado_nao_e_permitido(client: TestClient) -> None:
 
     assert resposta.status_code == 409
     assert resposta.json()["detail"] == "Já existe um usuário com o CPF 529.982.247-25."
-    assert len(client.get("/usuarios").json()) == 1
+    assert len(client.get("/usuarios").json()) == 2  # administrador do teste + Maria
 
 
 def test_ca07_cpf_duplicado_com_mascara_diferente_tambem_e_bloqueado(
@@ -100,7 +107,7 @@ def test_ca07_cpf_duplicado_com_mascara_diferente_tambem_e_bloqueado(
     resposta = client.post("/usuarios", json=_dados(cpf="52998224725"))
 
     assert resposta.status_code == 409
-    assert len(client.get("/usuarios").json()) == 1
+    assert len(client.get("/usuarios").json()) == 2
 
 
 def test_ca07_cpf_duplicado_vale_tambem_para_usuario_inativo(
@@ -148,7 +155,8 @@ def test_cadastro_de_usuario_rejeita_dados_invalidos(
 
     assert resposta.status_code == 422
     assert resposta.json()["detail"] == esperado
-    assert client.get("/usuarios").json() == []
+    cpfs = [u["cpf"] for u in client.get("/usuarios").json()]
+    assert cpfs == [CPF_ADMIN_DO_TESTE]  # nenhum usuário novo foi gravado
 
 
 def test_cadastro_de_usuario_com_campo_ausente_devolve_mensagem_em_portugues(
@@ -169,7 +177,7 @@ def test_lista_e_consulta_de_usuarios(client: TestClient) -> None:
     nomes = [u["nome"] for u in client.get("/usuarios").json()]
     consulta = client.get(f"/usuarios/{maria['id']}")
 
-    assert nomes == ["Maria Silva", "Zeca"]
+    assert nomes == ["Administrador", "Maria Silva", "Zeca"]
     assert consulta.status_code == 200
     assert consulta.json()["cpf"] == CPF_A
     assert client.get("/usuarios/999").status_code == 404
@@ -201,13 +209,15 @@ def test_atualiza_senha_somente_quando_informada(
     usuario = _criar(client)
     base = {"nome": "Maria", "email": "maria@exemplo.com", "perfil": "estoquista"}
 
+    def hash_atual() -> str:
+        with fabrica_sessao() as db:
+            return db.scalar(select(Usuario).where(Usuario.cpf == CPF_A)).senha_hash
+
     client.put(f"/usuarios/{usuario['id']}", json=base)
-    with fabrica_sessao() as db:
-        assert verificar_senha("senha-segura-1", db.scalar(select(Usuario)).senha_hash)
+    assert verificar_senha("senha-segura-1", hash_atual())
 
     client.put(f"/usuarios/{usuario['id']}", json={**base, "senha": "nova-senha-9"})
-    with fabrica_sessao() as db:
-        assert verificar_senha("nova-senha-9", db.scalar(select(Usuario)).senha_hash)
+    assert verificar_senha("nova-senha-9", hash_atual())
 
 
 def test_atualizar_usuario_inexistente_retorna_404(client: TestClient) -> None:
@@ -225,7 +235,7 @@ def test_inativa_e_reativa_usuario_sem_apagar(client: TestClient) -> None:
     inativo = client.post(f"/usuarios/{usuario['id']}/inativar")
     assert inativo.status_code == 200
     assert inativo.json()["ativo"] is False
-    assert len(client.get("/usuarios").json()) == 1
+    assert len(client.get("/usuarios").json()) == 2  # continua listado, só inativo
 
     ativo = client.post(f"/usuarios/{usuario['id']}/reativar")
     assert ativo.json()["ativo"] is True
@@ -234,7 +244,7 @@ def test_inativa_e_reativa_usuario_sem_apagar(client: TestClient) -> None:
 
 
 def test_nao_inativa_nem_rebaixa_o_ultimo_administrador(client: TestClient) -> None:
-    admin = _criar(client, perfil="administrador")
+    admin = client.get("/me").json()  # único administrador: o do próprio teste
 
     inativar = client.post(f"/usuarios/{admin['id']}/inativar")
     rebaixar = client.put(
