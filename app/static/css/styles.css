@@ -162,6 +162,25 @@ button:hover {
   color: var(--cor-erro);
 }
 
+.filtro {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  max-width: 20rem;
+  margin-bottom: var(--espaco);
+}
+
+#grupos h2 {
+  margin-top: var(--espaco);
+}
+
+#grupos section {
+  background: none;
+  border: 0;
+  padding: 0;
+  margin-bottom: 0;
+}
+
 .tabela-rolavel {
   overflow-x: auto;
   background: var(--cor-superficie);
