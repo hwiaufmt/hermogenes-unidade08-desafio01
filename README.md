@@ -101,6 +101,12 @@ tests/                 # cadastro, categorias, entrada, saida, estoque, paginas
 
 Camadas: router (HTTP) → service (regra de negócio) → models (dados). Nenhuma regra de negócio fica nos routers nem no JavaScript.
 
+## Documentação
+
+- [Guia de uso](docs/guia-de-uso.md): como usar as telas.
+- [Referência da API](docs/api.md): rotas, corpos, respostas e mensagens de erro.
+- [Arquitetura](docs/arquitetura.md): camadas, modelo de dados, fluxo de uma saída e decisões de integridade.
+
 ## Fora do escopo do MVP
 
 Autenticação, aprovação de requisições, fornecedores e notas fiscais, relatórios e dashboards, notificações, integrações, multi-filial, edição/exclusão de movimentações, histórico em tela, exportação e indicador de estoque baixo.
