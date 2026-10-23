@@ -3,9 +3,11 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
 
 from app.database import Base, SessionLocal, engine
+from app.erros import tratar_validacao
 from app.routers import categorias, materiais, movimentacoes, paginas
 from app.services.estoque import semear_categorias
 
@@ -21,6 +23,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="Controle de Materiais de Escritório", lifespan=lifespan)
+app.add_exception_handler(RequestValidationError, tratar_validacao)
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 app.include_router(categorias.router)
 app.include_router(materiais.router)

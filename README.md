@@ -74,7 +74,7 @@ Cada critério de aceite tem testes nomeados com o ID (`test_ca01_...` a `test_c
 | `POST /materiais/{id}/entrada` | Soma `quantidade` ao saldo | `404`, `422` |
 | `POST /materiais/{id}/saida` | Subtrai `quantidade` do saldo | `404`, `422`, `409` saldo insuficiente |
 
-Entrada e saída recebem `{"quantidade": n}` (inteiro maior que zero) e devolvem o material atualizado, com `quantidade` e `status`. As mensagens de erro de regra de negócio vêm em português.
+Entrada e saída recebem `{"quantidade": n}` (inteiro maior que zero) e devolvem o material atualizado, com `quantidade` e `status`. Todas as mensagens de erro, inclusive as de validação (`422`), vêm em português no campo `detail`, como texto.
 
 ## Regras de negócio
 
