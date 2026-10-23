@@ -7,6 +7,10 @@ CAMPOS = {
     "categoria_id": "categoria",
     "quantidade": "quantidade",
     "estoque_minimo": "estoque mínimo",
+    "cpf": "CPF",
+    "email": "e-mail",
+    "perfil": "perfil",
+    "senha": "senha",
 }
 PREFIXO_PYDANTIC = "Value error, "
 TIPOS_INTEIRO = {"int_type", "int_parsing", "int_from_float"}

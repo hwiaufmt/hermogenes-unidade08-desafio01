@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.database import Base, SessionLocal, engine
 from app.erros import tratar_validacao
-from app.routers import categorias, materiais, movimentacoes, paginas
+from app.routers import categorias, materiais, movimentacoes, paginas, usuarios
 from app.services.estoque import semear_categorias
 
 BASE_DIR = Path(__file__).parent
@@ -28,6 +28,7 @@ app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 app.include_router(categorias.router)
 app.include_router(materiais.router)
 app.include_router(movimentacoes.router)
+app.include_router(usuarios.router)
 app.include_router(paginas.router)
 
 

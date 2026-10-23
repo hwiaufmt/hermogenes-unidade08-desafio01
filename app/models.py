@@ -29,6 +29,24 @@ class Material(Base):
     categoria: Mapped[Categoria] = relationship()
 
 
+class Usuario(Base):
+    __tablename__ = "usuarios"
+    __table_args__ = (
+        CheckConstraint(
+            "perfil IN ('administrador', 'estoquista', 'operador')",
+            name="ck_usuario_perfil",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    nome: Mapped[str] = mapped_column(String(150))
+    cpf: Mapped[str] = mapped_column(String(11), unique=True)
+    email: Mapped[str] = mapped_column(String(254))
+    perfil: Mapped[str] = mapped_column(String(20))
+    senha_hash: Mapped[str] = mapped_column(String(200))
+    ativo: Mapped[bool] = mapped_column(default=True)
+
+
 class Movimentacao(Base):
     __tablename__ = "movimentacoes"
     __table_args__ = (
