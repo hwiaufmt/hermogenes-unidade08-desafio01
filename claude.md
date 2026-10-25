@@ -164,7 +164,7 @@ Códigos de erro: `401` sem login; `403` perfil sem permissão; `404` material/c
 6. Status é calculado a partir do saldo; não existe campo editável de status.
 7. `estoque_minimo` é guardado e exibido; **não dispara alerta no MVP** (decidido: indicador de "estoque baixo" fora do MVP).
 8. CPF é guardado só com dígitos e validado pelos dígitos verificadores; é único. E-mail tem formato validado e não é único.
-9. Senha: mínimo de 8 caracteres, guardada com hash `scrypt` e sal; nunca devolvida pela API.
+9. Senha: mínimo de **6** caracteres (protótipo), guardada com hash `scrypt` e sal; nunca devolvida pela API. **Senha padrão `123456`**: vale para usuário cadastrado sem senha informada e para o administrador padrão.
 10. O login responde igual para CPF inexistente, senha errada e usuário inativo ("CPF ou senha inválidos."), e o hash é calculado sempre, para não revelar quais CPFs existem.
 11. A sessão (cookie assinado, `HttpOnly`, `SameSite=Lax`, 8 h) **relê o usuário no banco a cada requisição**: inativar um usuário ou mudar o perfil dele vale na próxima chamada.
 12. Usuários não são apagados, apenas inativados. O **último administrador ativo** não pode ser inativado nem rebaixado.
@@ -276,16 +276,18 @@ O banco é o arquivo `estoque.db`, criado na raiz ao iniciar o app, junto com o 
 
 | Variável | Para quê |
 |---|---|
-| `ESTOQUE_ADMIN_CPF` e `ESTOQUE_ADMIN_SENHA` | criam o **primeiro administrador** ao iniciar, **só se não existir nenhum usuário** (CPF válido, senha com 8+ caracteres). Sem elas e sem usuários, o app avisa no log e ninguém consegue entrar |
+| `ESTOQUE_ADMIN_CPF` e `ESTOQUE_ADMIN_SENHA` | definem o **primeiro administrador**, criado ao iniciar **só se não existir nenhum usuário** (CPF válido, senha com 6+ caracteres). **Sem elas, vale o administrador padrão do protótipo: CPF `529.982.247-25`, senha `123456`** (o log avisa que a senha é a padrão) |
 | `ESTOQUE_ADMIN_NOME`, `ESTOQUE_ADMIN_EMAIL` | opcionais (padrões: `Administrador`, `administrador@estoque.local`) |
 | `ESTOQUE_SECRET_KEY` | chave que assina o cookie de sessão. Defina um valor fixo e longo; sem ela uma chave aleatória é gerada a cada início e as sessões não sobrevivem a reinícios |
 
-Exemplo (PowerShell):
+Para trocar o administrador padrão (PowerShell):
 
 ```powershell
-$env:ESTOQUE_ADMIN_CPF = "SEU-CPF"; $env:ESTOQUE_ADMIN_SENHA = "uma-senha-com-8-ou-mais"; $env:ESTOQUE_SECRET_KEY = "um-valor-longo-e-fixo"
+$env:ESTOQUE_ADMIN_CPF = "SEU-CPF"; $env:ESTOQUE_ADMIN_SENHA = "uma-senha-forte"; $env:ESTOQUE_SECRET_KEY = "um-valor-longo-e-fixo"
 uvicorn app.main:app --reload
 ```
+
+> **Protótipo:** por decisão do dono do projeto, a segurança de senhas foi simplificada (mínimo de 6 caracteres, senha padrão `123456`, administrador padrão no código). Isso não serve para uso real; ver seção 12.
 
 O cookie de sessão não tem a flag `Secure` (funciona em `http://localhost`). Ao publicar em HTTPS, ligue `https_only` no `SessionMiddleware`.
 
@@ -299,6 +301,7 @@ O cookie de sessão não tem a flag `Secure` (funciona em `http://localhost`). A
 - [x] O estoquista também movimenta e pesquisa? → **Não**: só o descrito (cadastros, valores de estoque e consulta, ver matriz na seção 4)
 - [x] Quem mantém os usuários? → **Novo perfil Administrador** (fora das duas permissões originais)
 - [x] Como remover um usuário? → **Inativar**
+- [x] Segurança das senhas no protótipo? → **Simplificada**: senhas de 6+ caracteres, senha padrão `123456` e administrador padrão (CPF `529.982.247-25`). **Rever antes de uso real** (tamanho mínimo, senha padrão, administrador no código, chave de sessão)
 - [ ] Registrar **quem** fez cada entrada e saída (`usuario_id` em `Movimentacao`)? Foi sugerido na Sprint 4, **não foi implementado**; exige migração do banco
 - [ ] "Informar valores de estoque" inclui **editar** estoque inicial/mínimo de um material já cadastrado? Hoje só é possível ao cadastrar; não há endpoint de edição
 - [ ] Limite de tentativas de login e troca de senha pelo próprio usuário?

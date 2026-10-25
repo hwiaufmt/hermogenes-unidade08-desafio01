@@ -16,6 +16,7 @@ from app.config import (
     ADMIN_SENHA,
     CHAVE_SECRETA,
     DURACAO_SESSAO_SEGUNDOS,
+    SENHA_PADRAO,
 )
 from app.database import Base, SessionLocal, engine
 from app.erros import tratar_validacao
@@ -34,25 +35,23 @@ from app.routers.paginas import (
     tratar_login_necessario,
 )
 from app.services.estoque import semear_categorias
-from app.services.usuarios import criar_administrador_inicial, listar_usuarios
+from app.services.usuarios import criar_administrador_inicial
 
 BASE_DIR = Path(__file__).parent
 registro = logging.getLogger("uvicorn.error")
 
 
 def _criar_administrador_inicial(db: Session) -> None:
-    if not (ADMIN_CPF and ADMIN_SENHA):
-        if not listar_usuarios(db):
-            registro.warning(
-                "Nenhum usuário cadastrado. Defina ESTOQUE_ADMIN_CPF e "
-                "ESTOQUE_ADMIN_SENHA para criar o primeiro administrador."
-            )
-        return
     criado = criar_administrador_inicial(
         db, ADMIN_CPF, ADMIN_SENHA, ADMIN_NOME, ADMIN_EMAIL
     )
     if criado:
         registro.info("Administrador inicial criado (CPF %s).", criado.cpf)
+        if ADMIN_SENHA == SENHA_PADRAO:
+            registro.warning(
+                "O administrador usa a senha padrão do protótipo. "
+                "Defina ESTOQUE_ADMIN_CPF e ESTOQUE_ADMIN_SENHA para trocar."
+            )
 
 
 @asynccontextmanager

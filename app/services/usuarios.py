@@ -12,7 +12,7 @@ PERFIL_ADMINISTRADOR = "administrador"
 PERFIL_ESTOQUISTA = "estoquista"
 PERFIL_OPERADOR = "operador"
 PERFIS = (PERFIL_ADMINISTRADOR, PERFIL_ESTOQUISTA, PERFIL_OPERADOR)
-TAMANHO_MINIMO_SENHA = 8
+TAMANHO_MINIMO_SENHA = 6  # protótipo: aceita a senha padrão de 6 dígitos
 _PADRAO_EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 

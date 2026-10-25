@@ -52,20 +52,24 @@ pip install -r requirements.txt
 
 ### Primeiro acesso
 
-O sistema exige login, e no início não há usuários. Defina as variáveis do **primeiro administrador** antes de iniciar (ele só é criado se ainda não existir nenhum usuário):
+O sistema exige login. Ao iniciar com o banco **sem usuários**, ele cria sozinho o administrador padrão do protótipo:
 
-```powershell
-$env:ESTOQUE_ADMIN_CPF = "SEU-CPF"            # CPF válido, com ou sem máscara
-$env:ESTOQUE_ADMIN_SENHA = "uma-senha-forte"  # mínimo de 8 caracteres
-$env:ESTOQUE_SECRET_KEY = "um-valor-longo-e-fixo"
+| Campo | Valor |
+|---|---|
+| CPF | `529.982.247-25` (CPF de exemplo, com dígitos válidos) |
+| Senha | `123456` |
+
+```bash
 uvicorn app.main:app --reload
 ```
 
-No Linux/macOS, use `export NOME=valor`. Abra <http://localhost:8000>, entre com esse CPF e senha e, na tela **Usuários**, cadastre estoquistas e operadores.
+Abra <http://localhost:8000>, entre com esse CPF e senha e, na tela **Usuários**, cadastre estoquistas e operadores. **Senha padrão:** quem for cadastrado sem senha informada fica com `123456`.
+
+> Esta é uma configuração de **protótipo**, sem preocupação com segurança. Antes de qualquer uso real, troque as senhas e defina os dados do administrador pelas variáveis abaixo (por exemplo, `$env:ESTOQUE_ADMIN_CPF = "SEU-CPF"` no PowerShell, ou `export` no Linux/macOS).
 
 | Variável | Para quê |
 |---|---|
-| `ESTOQUE_ADMIN_CPF`, `ESTOQUE_ADMIN_SENHA` | criam o primeiro administrador |
+| `ESTOQUE_ADMIN_CPF`, `ESTOQUE_ADMIN_SENHA` | definem o primeiro administrador (padrão: o acima) |
 | `ESTOQUE_ADMIN_NOME`, `ESTOQUE_ADMIN_EMAIL` | opcionais (padrão: `Administrador`, `administrador@estoque.local`) |
 | `ESTOQUE_SECRET_KEY` | assina o cookie de sessão; sem ela, as sessões se perdem a cada reinício |
 
@@ -120,7 +124,7 @@ Todas as rotas, exceto `POST /login`, exigem login (`401`) e a permissão do per
 - Saldo e movimentação são gravados na mesma transação (tudo ou nada).
 - `estoque_minimo` é guardado e exibido; não dispara alerta no MVP.
 - O **CPF** é único (com dígitos verificadores válidos); CPF repetido, mesmo com máscara diferente, é recusado.
-- A senha tem pelo menos 8 caracteres e é guardada só como hash `scrypt`.
+- A senha tem pelo menos 6 caracteres (protótipo; a senha padrão é `123456`) e é guardada só como hash `scrypt`.
 - Usuários são **inativados**, não apagados. O último administrador ativo não pode ser inativado nem rebaixado.
 - Inativar um usuário ou mudar o perfil dele vale na próxima requisição, mesmo com a sessão aberta.
 

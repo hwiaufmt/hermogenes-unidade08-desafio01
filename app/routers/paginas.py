@@ -6,10 +6,11 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 
+from app.config import SENHA_PADRAO
 from app.dependencias import DbSessao, usuario_da_sessao
 from app.models import Usuario
 from app.permissoes import Acao, perfil_pode
-from app.services.usuarios import PERFIS
+from app.services.usuarios import PERFIS, TAMANHO_MINIMO_SENHA
 
 router = APIRouter(include_in_schema=False)
 
@@ -131,4 +132,12 @@ def cadastro(request: Request, usuario: PodeCadastrar) -> Response:
 
 @router.get("/gestao/usuarios", response_class=HTMLResponse)
 def usuarios(request: Request, usuario: PodeGerirUsuarios) -> Response:
-    return _pagina(request, "usuarios.html", usuario, "usuarios", perfis=PERFIS)
+    return _pagina(
+        request,
+        "usuarios.html",
+        usuario,
+        "usuarios",
+        perfis=PERFIS,
+        senha_padrao=SENHA_PADRAO,
+        tamanho_minimo_senha=TAMANHO_MINIMO_SENHA,
+    )

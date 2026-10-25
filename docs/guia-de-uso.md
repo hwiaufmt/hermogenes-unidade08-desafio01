@@ -25,7 +25,9 @@ Se o CPF ou a senha estiverem errados, aparece "CPF ou senha inválidos.". A men
 
 ### Primeiro acesso (quem instala o sistema)
 
-No início não há usuários. Quem inicia o sistema define as variáveis `ESTOQUE_ADMIN_CPF` e `ESTOQUE_ADMIN_SENHA` (veja o [README](../README.md#primeiro-acesso)); o primeiro administrador é criado com elas. Esse administrador cadastra os demais usuários.
+Em um banco sem usuários, o sistema cria sozinho o **administrador padrão do protótipo**: CPF `529.982.247-25` e senha `123456`. Entre com ele e cadastre os demais usuários. Para usar outro CPF e senha, quem inicia o sistema define `ESTOQUE_ADMIN_CPF` e `ESTOQUE_ADMIN_SENHA` (veja o [README](../README.md#primeiro-acesso)).
+
+Quem for cadastrado sem senha informada também fica com a senha padrão `123456`; peça que troque (hoje a troca é feita por um administrador, editando o usuário).
 
 ## Fluxo básico
 
@@ -44,7 +46,7 @@ No início não há usuários. Quem inicia o sistema define as variáveis `ESTOQ
 | CPF | obrigatório, com dígitos verificadores válidos; aceita pontos e traço. **Não pode se repetir** |
 | E-mail | obrigatório, no formato `nome@dominio.com` |
 | Perfil | administrador, estoquista ou operador |
-| Senha | mínimo de 8 caracteres |
+| Senha | opcional: em branco, vale a senha padrão `123456`. Se informada, mínimo de 6 caracteres |
 
 Clique em **Cadastrar usuário**. Se o CPF já existe, o sistema recusa com "Já existe um usuário com o CPF ...", mesmo que o usuário esteja inativo.
 
@@ -121,16 +123,16 @@ Os erros aparecem em uma faixa no topo da tela, em português. As mais comuns:
 | Já existe uma categoria chamada '...'. | usar a categoria existente |
 | CPF inválido. | conferir os 11 dígitos |
 | Já existe um usuário com o CPF .... | o usuário já está cadastrado (talvez inativo; reative-o) |
-| A senha deve ter pelo menos 8 caracteres. | escolher uma senha maior |
+| A senha deve ter pelo menos 6 caracteres. | escolher uma senha maior (ou deixar em branco para usar a padrão) |
 | O e-mail informado é inválido. | usar o formato `nome@dominio.com` |
 
 ## Perguntas frequentes
 
-**Onde ficam os dados?** No arquivo `estoque.db`, na pasta do projeto. Para recomeçar do zero, pare o app e apague esse arquivo; as três categorias iniciais voltam na próxima execução, e o primeiro administrador é recriado se as variáveis `ESTOQUE_ADMIN_CPF` e `ESTOQUE_ADMIN_SENHA` estiverem definidas.
+**Onde ficam os dados?** No arquivo `estoque.db`, na pasta do projeto. Para recomeçar do zero, pare o app e apague esse arquivo; as três categorias iniciais voltam na próxima execução, e o administrador padrão (ou o definido por `ESTOQUE_ADMIN_CPF` e `ESTOQUE_ADMIN_SENHA`) é recriado.
 
 **Esqueci minha senha.** Ainda não há recuperação de senha pelo próprio usuário. Um administrador pode definir uma nova senha editando o seu cadastro na tela Usuários.
 
-**Esqueci a senha do único administrador.** As variáveis `ESTOQUE_ADMIN_CPF` e `ESTOQUE_ADMIN_SENHA` não ajudam, porque o administrador inicial só é criado em um banco sem usuários. Nesse caso é preciso intervir no banco ou recriá-lo (perdendo os dados). Por isso, mantenha pelo menos dois administradores.
+**Esqueci a senha do único administrador.** O administrador padrão só é criado em um banco sem usuários, então não ajuda se já existem usuários. Nesse caso é preciso intervir no banco ou recriá-lo (perdendo os dados). Por isso, mantenha pelo menos dois administradores.
 
 **Posso ver o histórico de entradas e saídas, ou quem fez cada uma?** Não na interface. Cada movimentação é gravada no banco (tipo, quantidade, saldo após e data UTC), mas o histórico em tela e o registro de **quem** movimentou estão fora do escopo por ora.
 

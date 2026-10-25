@@ -7,6 +7,7 @@ from pydantic import (
     field_validator,
 )
 
+from app.config import SENHA_PADRAO
 from app.services.estoque import calcular_status
 from app.services.usuarios import (
     PERFIS,
@@ -85,7 +86,7 @@ class UsuarioCriar(BaseModel):
     cpf: str
     email: str
     perfil: str
-    senha: str
+    senha: str = SENHA_PADRAO  # protótipo: sem senha informada, vale a padrão
 
     _nome = field_validator("nome")(_validar_nome_usuario)
     _email = field_validator("email")(_validar_email)

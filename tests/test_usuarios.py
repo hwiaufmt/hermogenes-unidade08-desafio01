@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from app.config import SENHA_PADRAO
 from app.models import Usuario
 from app.seguranca import gerar_hash, verificar_senha
 from app.services.usuarios import (
@@ -145,7 +146,7 @@ def test_ca07_email_repetido_com_cpf_diferente_e_permitido(
             {"perfil": "chefe"},
             "Perfil inválido. Use administrador, estoquista ou operador.",
         ),
-        ({"senha": "curta"}, "A senha deve ter pelo menos 8 caracteres."),
+        ({"senha": "12345"}, "A senha deve ter pelo menos 6 caracteres."),
     ],
 )
 def test_cadastro_de_usuario_rejeita_dados_invalidos(
@@ -265,3 +266,28 @@ def test_com_dois_administradores_um_pode_ser_inativado(client: TestClient) -> N
     resposta = client.post(f"/usuarios/{primeiro['id']}/inativar")
 
     assert resposta.status_code == 200
+
+
+def test_usuario_sem_senha_informada_recebe_a_senha_padrao(
+    client: TestClient, cliente_anonimo: TestClient
+) -> None:
+    corpo = {k: v for k, v in _dados().items() if k != "senha"}
+
+    criado = client.post("/usuarios", json=corpo)
+    cliente_anonimo.post("/logout")
+    entrada = cliente_anonimo.post("/login", json={"cpf": CPF_A, "senha": SENHA_PADRAO})
+
+    assert criado.status_code == 201
+    assert SENHA_PADRAO == "123456"
+    assert entrada.status_code == 200
+    assert entrada.json()["cpf"] == CPF_A
+
+
+def test_senha_com_seis_caracteres_e_aceita_e_com_cinco_nao(
+    client: TestClient,
+) -> None:
+    aceita = client.post("/usuarios", json=_dados(senha="123456"))
+    recusada = client.post("/usuarios", json=_dados(cpf=CPF_B, senha="12345"))
+
+    assert aceita.status_code == 201
+    assert recusada.status_code == 422

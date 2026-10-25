@@ -285,7 +285,7 @@ Cadastra um usuário.
 | `cpf` | texto | sim | 11 dígitos com dígitos verificadores válidos; aceita máscara; **único** |
 | `email` | texto | sim | formato `nome@dominio.ext`; guardado em minúsculas; não é único |
 | `perfil` | texto | sim | `administrador`, `estoquista` ou `operador` |
-| `senha` | texto | sim | mínimo de 8 caracteres |
+| `senha` | texto | não (padrão `123456`) | mínimo de 6 caracteres; se omitida, vale a senha padrão do protótipo |
 
 ```json
 {
@@ -305,7 +305,7 @@ Cadastra um usuário.
 | `422` | `"O nome do usuário é obrigatório."` |
 | `422` | `"O e-mail informado é inválido."` |
 | `422` | `"Perfil inválido. Use administrador, estoquista ou operador."` |
-| `422` | `"A senha deve ter pelo menos 8 caracteres."` |
+| `422` | `"A senha deve ter pelo menos 6 caracteres."` |
 
 ### `PUT /usuarios/{id}`
 

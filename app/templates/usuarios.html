@@ -31,7 +31,7 @@
     <div class="campo">
       <label for="usuario-senha">Senha</label>
       <input id="usuario-senha" name="senha" type="password" autocomplete="new-password">
-      <small id="dica-senha">Mínimo de 8 caracteres.</small>
+      <small id="dica-senha" data-cadastro="Em branco, vale a senha padrão ({{ senha_padrao }}). Mínimo de {{ tamanho_minimo_senha }} caracteres.">Em branco, vale a senha padrão ({{ senha_padrao }}). Mínimo de {{ tamanho_minimo_senha }} caracteres.</small>
     </div>
     <div class="acoes-form">
       <button type="submit" id="botao-salvar">Cadastrar usuário</button>

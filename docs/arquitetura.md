@@ -69,6 +69,8 @@ ativo
 4. **A cada requisição** a dependência relê o usuário no banco. Como o cookie só guarda o id, inativar um usuário ou mudar o perfil dele vale na próxima chamada, mesmo com o cookie ainda válido.
 5. A senha é guardada como `scrypt$n$r$p$sal$hash` (biblioteca padrão), com sal aleatório; a verificação usa comparação em tempo constante.
 
+**Simplificações do protótipo:** a senha mínima é de 6 caracteres; um usuário cadastrado sem senha recebe a senha padrão `123456` (`config.SENHA_PADRAO`); e, em banco sem usuários, o início do app cria o administrador padrão (CPF `529.982.247-25`, senha `123456`), a menos que `ESTOQUE_ADMIN_CPF` e `ESTOQUE_ADMIN_SENHA` definam outro. O log avisa quando a senha do administrador é a padrão.
+
 A chave de assinatura vem de `ESTOQUE_SECRET_KEY`. Sem ela, uma chave aleatória é gerada a cada início e as sessões não sobrevivem a reinícios. O cookie não tem a flag `Secure` (funciona em `http://localhost`); em HTTPS, ligue `https_only`.
 
 ## Permissões

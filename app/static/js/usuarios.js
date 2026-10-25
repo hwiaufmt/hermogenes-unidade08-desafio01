@@ -80,7 +80,7 @@ function modoCadastro() {
   tituloForm.textContent = "Novo usuário";
   botaoSalvar.textContent = "Cadastrar usuário";
   botaoCancelar.hidden = true;
-  dicaSenha.textContent = "Mínimo de 8 caracteres.";
+  dicaSenha.textContent = dicaSenha.dataset.cadastro;
 }
 
 function iniciarEdicao(usuario) {
@@ -108,6 +108,12 @@ function dadosDoFormulario() {
   };
 }
 
+function corpoDeCadastro() {
+  const { senha, ...demais } = dadosDoFormulario();
+  // Sem senha informada, o servidor usa a senha padrão.
+  return senha === "" ? demais : { ...demais, senha };
+}
+
 function corpoDeEdicao() {
   const { nome, email, perfil, senha } = dadosDoFormulario();
   return { nome, email, perfil, senha: senha === "" ? null : senha };
@@ -119,7 +125,7 @@ async function salvar(evento) {
   try {
     const usuario = edicao
       ? await requisitar(`/usuarios/${edicao.id}`, opcoesJson("PUT", corpoDeEdicao()))
-      : await requisitar("/usuarios", opcoesJson("POST", dadosDoFormulario()));
+      : await requisitar("/usuarios", opcoesJson("POST", corpoDeCadastro()));
     await carregarUsuarios();
     mostrarMensagem(
       mensagem,
