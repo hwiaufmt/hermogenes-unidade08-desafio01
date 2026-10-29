@@ -249,6 +249,46 @@ td.acoes button {
   grid-column: 1 / -1;
 }
 
+.barra-acoes {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.5rem;
+}
+
+.totais {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--espaco);
+  margin: 0;
+}
+
+.totais div {
+  padding: 0.75rem 1rem;
+  background: var(--cor-superficie);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio);
+}
+
+.totais dt {
+  color: var(--cor-suave);
+  font-size: 0.9rem;
+}
+
+.totais dd {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.totais dd[data-zero="false"] {
+  color: var(--cor-erro);
+}
+
+#detalhe-saldos h3 {
+  margin: var(--espaco) 0 0.5rem;
+  font-size: 1.05rem;
+}
+
 dialog {
   width: min(28rem, calc(100% - 2rem));
   padding: var(--espaco);

@@ -27,6 +27,8 @@ class ItemMenu(NamedTuple):
 # O menu e o acesso às telas derivam da mesma matriz de permissões da API.
 ITENS_MENU = (
     ItemMenu("pesquisa", "Pesquisa", "/pesquisa", (Acao.CONSULTAR_ESTOQUE,)),
+    # A página fica em /estoque/saldos porque /saldos é a API.
+    ItemMenu("saldos", "Saldos", "/estoque/saldos", (Acao.CONSULTAR_ESTOQUE,)),
     ItemMenu("movimentar", "Movimentar", "/movimentar", (Acao.MOVIMENTAR,)),
     ItemMenu(
         "cadastro",
@@ -122,6 +124,11 @@ def login(request: Request, db: DbSessao) -> Response:
 @router.get("/pesquisa", response_class=HTMLResponse)
 def pesquisa(request: Request, usuario: PodePesquisar) -> Response:
     return _pagina(request, "pesquisa.html", usuario, "pesquisa")
+
+
+@router.get("/estoque/saldos", response_class=HTMLResponse)
+def saldos(request: Request, usuario: PodePesquisar) -> Response:
+    return _pagina(request, "saldos.html", usuario, "saldos")
 
 
 @router.get("/movimentar", response_class=HTMLResponse)

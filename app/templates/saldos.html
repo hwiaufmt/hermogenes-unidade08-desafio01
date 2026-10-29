@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block titulo %}Saldos{% endblock %}
+{% block cabecalho %}Saldos{% endblock %}
+
+{% block conteudo %}
+<p id="mensagem" class="mensagem" role="status" aria-live="polite" hidden></p>
+
+<div class="barra-acoes">
+  <button type="button" id="botao-atualizar" class="botao-secundario">Atualizar saldos</button>
+</div>
+
+<section aria-labelledby="titulo-total-geral">
+  <h2 id="titulo-total-geral">Total geral</h2>
+  <dl class="totais" id="total-geral">
+    <div><dt>Materiais</dt><dd id="total-materiais">–</dd></div>
+    <div><dt>Unidades em estoque</dt><dd id="total-unidades">–</dd></div>
+    <div><dt>Indisponíveis</dt><dd id="total-indisponiveis">–</dd></div>
+  </dl>
+</section>
+
+<section aria-labelledby="titulo-resumo-categorias">
+  <h2 id="titulo-resumo-categorias">Resumo por categoria</h2>
+  <div class="tabela-rolavel" tabindex="0" role="region" aria-labelledby="titulo-resumo-categorias">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Categoria</th>
+          <th scope="col" class="num">Materiais</th>
+          <th scope="col" class="num">Unidades</th>
+          <th scope="col" class="num">Indisponíveis</th>
+        </tr>
+      </thead>
+      <tbody id="resumo-categorias"></tbody>
+    </table>
+  </div>
+</section>
+
+<section aria-labelledby="titulo-saldo-material">
+  <h2 id="titulo-saldo-material">Saldo por material</h2>
+  <div id="detalhe-saldos"></div>
+  <p id="vazio" hidden>Nenhum material cadastrado.</p>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="{{ url_for('static', path='js/saldos.js') }}"></script>
+{% endblock %}

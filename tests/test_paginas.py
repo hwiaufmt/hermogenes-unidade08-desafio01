@@ -19,13 +19,14 @@ OPERADOR = PERFIL_OPERADOR
 # página -> perfis autorizados (matriz real)
 PAGINAS = {
     "/pesquisa": {ESTOQUISTA, OPERADOR},
+    "/estoque/saldos": {ESTOQUISTA, OPERADOR},
     "/movimentar": {OPERADOR},
     "/materiais/novo": {ESTOQUISTA},
     "/gestao/usuarios": {ADMIN},
 }
 MENU_POR_PERFIL = {
-    ESTOQUISTA: ["/pesquisa", "/materiais/novo"],
-    OPERADOR: ["/pesquisa", "/movimentar"],
+    ESTOQUISTA: ["/pesquisa", "/estoque/saldos", "/materiais/novo"],
+    OPERADOR: ["/pesquisa", "/estoque/saldos", "/movimentar"],
     ADMIN: ["/gestao/usuarios"],
 }
 
@@ -159,6 +160,32 @@ def test_pagina_pesquisa_renderiza_com_filtros(client: TestClient) -> None:
     assert "js/pesquisa.js" in html
 
 
+def test_ca11_pagina_saldos_renderiza_com_totais_resumo_e_detalhe(
+    client: TestClient,
+) -> None:
+    html = client.get("/estoque/saldos").text
+
+    for elemento in (
+        'id="total-materiais"',
+        'id="total-unidades"',
+        'id="total-indisponiveis"',
+        'id="resumo-categorias"',
+        'id="detalhe-saldos"',
+        'id="botao-atualizar"',
+    ):
+        assert elemento in html
+    assert "js/saldos.js" in html
+
+
+def test_ca11_pagina_de_saldos_nao_colide_com_a_api(client: TestClient) -> None:
+    pagina = client.get("/estoque/saldos")
+    api = client.get("/saldos")
+
+    assert pagina.headers["content-type"].startswith("text/html")
+    assert api.headers["content-type"].startswith("application/json")
+    assert set(api.json()) == {"categorias", "totais"}
+
+
 def test_pagina_movimentar_renderiza(client: TestClient) -> None:
     html = client.get("/movimentar").text
 
@@ -245,6 +272,8 @@ def test_arquivos_estaticos_sao_servidos(client: TestClient) -> None:
         "js/login.js",
         "js/sair.js",
         "js/pesquisa.js",
+        "js/saldos.js",
+        "js/tabelas.js",
         "js/cadastro.js",
         "js/movimentar.js",
         "js/usuarios.js",
