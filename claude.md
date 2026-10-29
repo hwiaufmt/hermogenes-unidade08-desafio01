@@ -166,6 +166,11 @@ Códigos de erro: `401` sem login; `403` perfil sem permissão; `404` material/c
 - **CA-10 Aviso de impacto:** antes de alterar uma categoria que tem materiais, o sistema informa **quantos registros serão afetados** e só grava com confirmação. Sem confirmação (`confirmar: true`), o servidor responde `409` com a quantidade (`afetados`) e **nada é gravado**. Categoria sem materiais grava direto. Nome repetido é recusado antes de pedir a confirmação.
 - **CA-11 Consulta de saldo:** a visão **Saldos** mostra, por categoria, o total de materiais, o total de unidades e quantos estão indisponíveis, e o saldo atual de cada material, sempre coerente com as entradas e saídas já registradas. Mostra também o **total geral** e inclui as categorias sem materiais (com zeros).
 
+### Exclusão de materiais e consulta por material (Sprint 8 — planejados)
+- **CA-12 Exclusão lógica de material:** o estoquista pode excluir um material. O registro **não é apagado do banco**: fica marcado como excluído e **deixa de aparecer** em todas as telas e consultas (Pesquisa, Saldos, Movimentar e nos totais) e de aceitar movimentações; consultar ou movimentar um material excluído → `404`. Material com **saldo maior que zero** só é excluído com confirmação (`confirmar: true`): sem ela, o servidor responde `409` informando o saldo e **nada é gravado**; com saldo 0, exclui direto. As movimentações antigas **continuam guardadas**. Outros perfis → `403`.
+- **CA-13 Consulta por material:** a tela Saldos lista os materiais com as colunas **Material, Quantidade, Categoria e Disponível**, **agrupados por categoria em ordem alfabética** (e por nome dentro da categoria), sem materiais excluídos e sempre coerente com as entradas e saídas. Isso **redefine** o CA-11 na tela (os totais por categoria deixam de ser exibidos; o total geral continua).
+- **CA-14 Disponibilidade em sim ou não:** nas telas (Pesquisa, Saldos e filtros), a disponibilidade aparece como **Sim** (saldo maior que zero) ou **Não** (saldo 0). A regra do status (CA-05) e o campo `status` da API não mudam.
+
 ## 6. Regras de negócio e integridade
 
 1. Quantidade de entrada/saída: inteiro **maior que zero**.
@@ -185,7 +190,7 @@ Códigos de erro: `401` sem login; `403` perfil sem permissão; `404` material/c
 15. Alterar o nome de uma categoria que tem materiais exige confirmação explícita do cliente (`confirmar: true`); sem ela o servidor informa quantos registros seriam afetados e não grava. A regra vale só para a edição de categoria.
 16. Na consulta de saldos, **todos os totais** (por categoria e geral) são calculados no service, nunca no JavaScript. A contagem de indisponíveis reusa `calcular_status`. Categorias e materiais saem em ordem alfabética sem diferenciar maiúsculas de minúsculas.
 
-## 7. Plano em sprints (1 a 7 concluídas)
+## 7. Plano em sprints (1 a 7 concluídas; 8 planejada)
 
 ### Sprint 1 — Fundação e cadastro
 - Setup do projeto (FastAPI, SQLAlchemy, pytest, ruff, estrutura de pastas)
@@ -245,6 +250,14 @@ Documento de produto, não de código: `docs/visao-do-produto.md` (Markdown, dec
 3. **Revisar contra o sistema** (toda afirmação deve valer hoje), ligar o documento no README e em `docs/`. **Feito.** A revisão achou e corrigiu cinco imprecisões: (a) "todas as mensagens em português" era falso, pois endereços inexistentes (`404 "Not Found"`) e métodos não permitidos (`405 "Method Not Allowed"`) respondem em inglês (corrigido também no README e em `docs/api.md`); (b) uma linha "quem decide compras" sugeria um perfil que não existe; (c) "histórico dessa pessoa" sugeria um histórico que o sistema não tem; (d) o princípio "avisar antes de afetar" soava geral, mas hoje vale só para a edição de categoria; (e) a tela Saldos poderia ser confundida com os relatórios e painéis que estão fora do escopo.
 - **Pronto quando:** o documento está escrito, revisado e versionado, e nada nele contradiz o que o sistema faz. **Verificado** contra o código e o comportamento real (sessão de 8 h, categorias iniciais, permissões, respostas de erro) e ligado no README e em `docs/`.
 
+### Sprint 8 — Exclusão lógica de materiais e consulta por material (planejada; pedido explícito, amplia o escopo)
+Três mudanças pedidas pelo dono do projeto: (1) excluir materiais de forma **lógica**; (2) a tela de saldos passa a listar **cada material** (nome, quantidade, categoria e disponibilidade), agrupado por categoria em ordem alfabética; (3) a disponibilidade passa a ser exibida como **Sim** ou **Não**.
+1. **Exclusão lógica (service e API).** Nova coluna `excluido_em` em `materiais` (data e hora UTC; vazia = material ativo), criada por uma **migração leve e idempotente ao iniciar** (`ALTER TABLE ... ADD COLUMN`, sem tocar nos dados). É a **primeira mudança em uma tabela existente**: o `estoque.db` já em uso se atualiza sozinho (recomenda-se copiar o arquivo antes). Nova ação `EXCLUIR_MATERIAL`, concedida ao **estoquista**; `DELETE /materiais/{id}` faz a exclusão lógica. **Material com saldo maior que zero exige confirmação** (`confirmar: true`): sem ela o servidor responde `409` informando o saldo e nada é gravado; com saldo 0, exclui direto. O material excluído **some** de Pesquisa, Saldos, Movimentar e dos totais (inclusive o total de materiais por categoria e o aviso de "registros afetados" da edição de categoria); consultá-lo ou movimentá-lo dá `404`. As **movimentações antigas continuam guardadas**.
+2. **Telas.** Botão **Excluir** na Pesquisa, só para quem tem a permissão, com janela de confirmação (`<dialog>`) que mostra o saldo quando houver. Tela **Saldos**: os cartões do total geral continuam; a tabela única **substitui** "Resumo por categoria" e "Saldo por material" e tem as colunas **Material | Quantidade | Categoria | Disponível**, **agrupada por categoria em ordem alfabética** e com os materiais em ordem alfabética dentro de cada categoria, sem coluna extra à esquerda. **Disponível** aparece como **Sim** ou **Não** em Pesquisa, Saldos e nos filtros ("Disponível: Todos, Sim, Não"). A **API não muda** (`status` continua `"Disponível"`/`"Indisponível"`, e `GET /saldos` continua devolvendo os totais por categoria; a tela é que não os exibe mais).
+3. **Fechamento:** testes CA-12 a CA-14, documentação (README, `docs/`, visão do produto) e este arquivo.
+- Fora desta sprint: **restaurar** um material excluído (a exclusão fica só no banco) e excluir categorias.
+- **Pronto quando:** o estoquista exclui um material pela tela (com confirmação quando há saldo) e ele deixa de aparecer em todo o sistema, sem apagar o histórico; o banco já existente é atualizado sem perda de dados; a tela Saldos mostra a tabela nas colunas pedidas, agrupada por categoria em ordem alfabética; e a disponibilidade aparece como Sim ou Não nas telas.
+
 ## 8. Padrões de código
 
 ### Python
@@ -271,7 +284,7 @@ Documento de produto, não de código: `docs/visao-do-produto.md` (Markdown, dec
 
 Aprovação de requisições, fornecedores e notas fiscais, relatórios e dashboards, notificações, integrações (ERP/e-mail), multi-filial, edição/exclusão de movimentações, histórico em tela, app mobile nativo, exportação.
 
-Excluir categorias (a edição do nome é a Sprint 5). Saldo em data passada e extrato de movimentações por material (a Sprint 6 trata só do saldo atual).
+Excluir categorias (a edição do nome é a Sprint 5). Saldo em data passada e extrato de movimentações por material (a Sprint 6 trata só do saldo atual). Restaurar um material excluído (a exclusão lógica da Sprint 8 só marca o registro no banco).
 
 Dentro de usuários e acesso, também fora do escopo por ora: recuperação/troca de senha pelo próprio usuário, limite de tentativas de login, login por provedor externo (SSO), edição de CPF e exclusão definitiva de usuários, e registrar quem fez cada movimentação.
 
@@ -349,6 +362,13 @@ O cookie de sessão não tem a flag `Secure` (funciona em `http://localhost`). A
 - [x] Que contexto o documento descreve? → **Genérico, um escritório** (sem organização específica)
 - [x] Métricas de sucesso do documento? → **Propostas como hipóteses**, sem metas numéricas inventadas
 - [x] O documento tem "Próximos passos"? → **Não**: descreve só o que existe hoje
+- [x] A exclusão de material é física ou lógica? → **Lógica** (Sprint 8): o registro fica no banco, marcado como excluído; as movimentações antigas continuam guardadas
+- [x] Quem exclui material? → **Só o estoquista** (nova ação `EXCLUIR_MATERIAL`)
+- [x] O que fazer ao excluir material com saldo maior que zero? → **Permitir, com confirmação que mostra o saldo** (o servidor também exige)
+- [x] Como o banco já existente ganha a coluna da exclusão lógica? → **Migração leve automática ao iniciar** (`ALTER TABLE ... ADD COLUMN`, idempotente, sem tocar nos dados); recomenda-se copiar o `estoque.db` antes
+- [x] Qual tela é o "resumo de categoria" e como fica? → **Saldos**: a tabela única de materiais (Material | Quantidade | Categoria | Disponível), agrupada por categoria em ordem alfabética, substitui o resumo e o detalhe; os cartões do total geral continuam
+- [x] Há uma coluna antes de "Material"? → **Não** (as colunas seguem a ordem listada, sem coluna extra)
+- [x] Onde a disponibilidade vira "Sim"/"Não"? → **Em todas as telas** (Pesquisa, Saldos e filtros); **a API não muda**
 - [x] Haverá login em versão futura (impacta registrar "quem retirou")? → ~~Ignorar no MVP~~ **Superado na Sprint 4**: login por CPF + senha
 - [x] Como o usuário se identifica? → **CPF + senha**
 - [x] O estoquista também movimenta e pesquisa? → **Não**: só o descrito (cadastros, valores de estoque e consulta, ver matriz na seção 4)
