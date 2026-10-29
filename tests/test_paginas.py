@@ -3,6 +3,8 @@ from collections.abc import Callable
 import pytest
 from fastapi.testclient import TestClient
 
+from app import permissoes
+from app.permissoes import Acao
 from app.services.usuarios import (
     PERFIL_ADMINISTRADOR,
     PERFIL_ESTOQUISTA,
@@ -173,6 +175,57 @@ def test_pagina_cadastro_renderiza_e_nao_conflita_com_material_por_id(
     assert resposta.status_code == 200
     assert 'for="material-nome"' in resposta.text
     assert "Nova categoria" in resposta.text
+
+
+def test_pagina_cadastro_tem_lista_de_categorias_e_dialogos_de_edicao(
+    client: TestClient,
+) -> None:
+    html = client.get("/materiais/novo").text
+
+    assert 'id="lista-categorias"' in html
+    assert 'id="dialogo-edicao"' in html
+    assert 'for="edicao-nome"' in html
+    assert 'id="dialogo-confirmacao"' in html
+    assert 'id="texto-confirmacao"' in html
+    assert 'data-pode-editar="sim"' in html
+    assert '<th scope="col">Ações</th>' in html
+
+
+def test_ca09_estoquista_ve_a_edicao_de_categorias_na_tela(
+    entrar_como: Callable[[str], TestClient],
+) -> None:
+    html = entrar_como(ESTOQUISTA).get("/materiais/novo").text
+
+    assert 'data-pode-editar="sim"' in html
+
+
+def test_ca09_sem_a_permissao_de_editar_a_tela_nao_oferece_a_edicao(
+    entrar_como: Callable[[str], TestClient], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        permissoes,
+        "PERMISSOES",
+        {ESTOQUISTA: frozenset({Acao.CRIAR_CATEGORIA, Acao.CADASTRAR_MATERIAL})},
+    )
+
+    html = entrar_como(ESTOQUISTA).get("/materiais/novo").text
+
+    assert 'data-pode-editar="nao"' in html
+    assert '<th scope="col">Ações</th>' not in html
+
+
+def test_ca09_quem_so_pode_editar_categoria_abre_a_pagina_de_cadastro(
+    entrar_como: Callable[[str], TestClient], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        permissoes, "PERMISSOES", {ESTOQUISTA: frozenset({Acao.EDITAR_CATEGORIA})}
+    )
+    client = entrar_como(ESTOQUISTA)
+
+    resposta = client.get("/materiais/novo")
+
+    assert resposta.status_code == 200
+    assert "/materiais/novo" in resposta.text  # item "Cadastro" no menu
 
 
 def test_pagina_usuarios_renderiza_com_os_perfis(client: TestClient) -> None:

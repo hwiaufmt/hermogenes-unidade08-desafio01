@@ -40,6 +40,49 @@
     <button type="submit">Criar categoria</button>
   </form>
 </section>
+
+<section aria-labelledby="titulo-lista-categorias" id="secao-categorias"
+         data-pode-editar="{{ 'sim' if pode_editar_categoria else 'nao' }}">
+  <h2 id="titulo-lista-categorias">Categorias cadastradas</h2>
+  <div class="tabela-rolavel" tabindex="0" role="region" aria-labelledby="titulo-lista-categorias">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Categoria</th>
+          <th scope="col" class="num">Materiais</th>
+          {% if pode_editar_categoria %}<th scope="col">Ações</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody id="lista-categorias"></tbody>
+    </table>
+  </div>
+</section>
+
+<dialog id="dialogo-edicao" aria-labelledby="titulo-dialogo-edicao">
+  <form id="form-edicao" class="form-vertical" novalidate>
+    <h2 id="titulo-dialogo-edicao">Editar categoria</h2>
+    <p id="erro-edicao" class="mensagem" data-tipo="erro" role="alert" hidden></p>
+    <div class="campo">
+      <label for="edicao-nome">Novo nome da categoria</label>
+      <input id="edicao-nome" name="nome" type="text" maxlength="100" required>
+    </div>
+    <div class="acoes-form">
+      <button type="submit">Salvar alteração</button>
+      <button type="button" id="botao-cancelar-edicao" class="botao-secundario">Cancelar</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dialogo-confirmacao" aria-labelledby="titulo-dialogo-confirmacao" aria-describedby="texto-confirmacao">
+  <div class="form-vertical">
+    <h2 id="titulo-dialogo-confirmacao">Confirmar alteração</h2>
+    <p id="texto-confirmacao"></p>
+    <div class="acoes-form">
+      <button type="button" id="botao-confirmar-edicao">Confirmar alteração</button>
+      <button type="button" id="botao-voltar-edicao" class="botao-secundario">Voltar</button>
+    </div>
+  </div>
+</dialog>
 {% endblock %}
 
 {% block scripts %}

@@ -249,6 +249,23 @@ td.acoes button {
   grid-column: 1 / -1;
 }
 
+dialog {
+  width: min(28rem, calc(100% - 2rem));
+  padding: var(--espaco);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio);
+  background: var(--cor-superficie);
+  color: var(--cor-texto);
+}
+
+dialog::backdrop {
+  background: rgb(0 0 0 / 45%);
+}
+
+dialog h2 {
+  margin-top: 0;
+}
+
 .cartao-login {
   max-width: 24rem;
   margin-inline: auto;

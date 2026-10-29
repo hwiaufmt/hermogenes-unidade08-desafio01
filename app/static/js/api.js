@@ -9,6 +9,14 @@ export function mensagemDeErro(corpo) {
   return "Não foi possível concluir a operação.";
 }
 
+export class ErroDeApi extends Error {
+  constructor(mensagem, status, corpo) {
+    super(mensagem);
+    this.status = status;
+    this.corpo = corpo;
+  }
+}
+
 export async function requisitar(url, opcoes = {}) {
   let resposta;
   try {
@@ -20,13 +28,13 @@ export async function requisitar(url, opcoes = {}) {
   if (resposta.status === 401 && url !== "/login") {
     window.location.assign("/login");
   }
-  if (!resposta.ok) throw new Error(mensagemDeErro(corpo));
+  if (!resposta.ok) throw new ErroDeApi(mensagemDeErro(corpo), resposta.status, corpo);
   return corpo;
 }
 
-export function enviarJson(url, dados) {
+export function enviarJson(url, dados, metodo = "POST") {
   return requisitar(url, {
-    method: "POST",
+    method: metodo,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(dados),
   });

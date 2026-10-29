@@ -32,7 +32,7 @@ ITENS_MENU = (
         "cadastro",
         "Cadastro",
         "/materiais/novo",
-        (Acao.CADASTRAR_MATERIAL, Acao.CRIAR_CATEGORIA),
+        (Acao.CADASTRAR_MATERIAL, Acao.CRIAR_CATEGORIA, Acao.EDITAR_CATEGORIA),
     ),
     ItemMenu("usuarios", "Usuários", "/gestao/usuarios", (Acao.GERIR_USUARIOS,)),
 )
@@ -91,7 +91,11 @@ PodePesquisar = Annotated[Usuario, Depends(acesso_pagina(Acao.CONSULTAR_ESTOQUE)
 PodeMovimentar = Annotated[Usuario, Depends(acesso_pagina(Acao.MOVIMENTAR))]
 PodeCadastrar = Annotated[
     Usuario,
-    Depends(acesso_pagina(Acao.CADASTRAR_MATERIAL, Acao.CRIAR_CATEGORIA)),
+    Depends(
+        acesso_pagina(
+            Acao.CADASTRAR_MATERIAL, Acao.CRIAR_CATEGORIA, Acao.EDITAR_CATEGORIA
+        )
+    ),
 ]
 PodeGerirUsuarios = Annotated[Usuario, Depends(acesso_pagina(Acao.GERIR_USUARIOS))]
 
@@ -127,7 +131,13 @@ def movimentar(request: Request, usuario: PodeMovimentar) -> Response:
 
 @router.get("/materiais/novo", response_class=HTMLResponse)
 def cadastro(request: Request, usuario: PodeCadastrar) -> Response:
-    return _pagina(request, "cadastro.html", usuario, "cadastro")
+    return _pagina(
+        request,
+        "cadastro.html",
+        usuario,
+        "cadastro",
+        pode_editar_categoria=perfil_pode(usuario.perfil, Acao.EDITAR_CATEGORIA),
+    )
 
 
 @router.get("/gestao/usuarios", response_class=HTMLResponse)
