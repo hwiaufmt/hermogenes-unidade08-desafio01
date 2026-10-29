@@ -119,7 +119,7 @@ Sem login, as páginas redirecionam para `/login`. Sem permissão, mostram "Aces
 | `GET/POST /usuarios`, `GET/PUT /usuarios/{id}` | Mantém usuários | `409` CPF duplicado, `422` CPF/e-mail/senha inválidos |
 | `POST /usuarios/{id}/inativar` e `/reativar` | Inativa ou reativa | `409` último administrador |
 
-Todas as rotas, exceto `POST /login`, exigem login (`401`) e a permissão do perfil (`403`). Entrada e saída recebem `{"quantidade": n}` (inteiro maior que zero) e devolvem o material atualizado, com `quantidade` e `status`. Todas as mensagens de erro, inclusive as de validação (`422`), vêm em português no campo `detail`, como texto.
+Todas as rotas, exceto `POST /login`, exigem login (`401`) e a permissão do perfil (`403`). Entrada e saída recebem `{"quantidade": n}` (inteiro maior que zero) e devolvem o material atualizado, com `quantidade` e `status`. As mensagens de erro das operações, inclusive as de validação (`422`), vêm em português no campo `detail`, como texto. A exceção são as respostas padrão do framework para endereços inexistentes (`404 "Not Found"`) e métodos não permitidos (`405 "Method Not Allowed"`), que saem em inglês.
 
 ## Regras de negócio
 
@@ -160,6 +160,7 @@ Camadas: router (HTTP) → service (regra de negócio) → models (dados). Nenhu
 
 ## Documentação
 
+- [Visão do produto](docs/visao-do-produto.md): o que o produto é, para quem serve, o que faz hoje, o que não faz e os riscos do protótipo.
 - [Guia de uso](docs/guia-de-uso.md): como usar as telas, por perfil.
 - [Referência da API](docs/api.md): rotas, corpos, respostas e mensagens de erro.
 - [Arquitetura](docs/arquitetura.md): camadas, modelo de dados, autenticação, permissões e decisões de integridade.

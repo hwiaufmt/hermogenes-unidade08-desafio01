@@ -1,6 +1,6 @@
 # Guia de uso
 
-Como usar o **Controle de Materiais de Escritório** pelo navegador. Para instalar e iniciar o app, veja o [README](../README.md).
+Como usar o **Controle de Materiais de Escritório** pelo navegador. Para instalar e iniciar o app, veja o [README](../README.md). Para entender o produto como um todo (para quem serve, escopo e riscos), veja a [visão do produto](visao-do-produto.md).
 
 Com o app rodando, abra <http://localhost:8000>. Você precisa **entrar com CPF e senha**. O que aparece na barra do topo depende do seu **perfil**.
 

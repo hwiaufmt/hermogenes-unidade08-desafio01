@@ -1,11 +1,12 @@
 # Referência da API
 
-API REST em JSON. Com o app rodando, a documentação interativa (Swagger) fica em <http://localhost:8000/docs>.
+API REST em JSON. Com o app rodando, a documentação interativa (Swagger) fica em <http://localhost:8000/docs>. Para o contexto do produto, veja a [visão do produto](visao-do-produto.md).
 
 ## Convenções
 
 - Corpo e respostas em `application/json`.
 - Erros devolvem `{"detail": "mensagem em português"}`. O `detail` é sempre **texto**, inclusive nos `422` de validação.
+- **Exceção:** endereços que não existem (`404`) e métodos não permitidos (`405`) respondem com a mensagem padrão do framework, em inglês: `{"detail": "Not Found"}` e `{"detail": "Method Not Allowed"}`. A documentação interativa (`/docs`) também é em inglês.
 - Quando há mais de um problema de validação, as mensagens vêm unidas num só texto.
 
 ### Autenticação e permissões

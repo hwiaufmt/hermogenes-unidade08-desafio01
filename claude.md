@@ -35,7 +35,7 @@ Premissas de stack acima podem ser trocadas; confirme antes de mudar.
 ├── CLAUDE.md
 ├── README.md
 ├── requirements.txt
-├── docs/                    # guia-de-uso.md, api.md, arquitetura.md
+├── docs/                    # visao-do-produto.md, guia-de-uso.md, api.md, arquitetura.md
 ├── app/
 │   ├── main.py              # criação do app, middleware, routers, seed, admin inicial
 │   ├── config.py            # chave da sessão, duração, variáveis do admin inicial
@@ -185,7 +185,7 @@ Códigos de erro: `401` sem login; `403` perfil sem permissão; `404` material/c
 15. Alterar o nome de uma categoria que tem materiais exige confirmação explícita do cliente (`confirmar: true`); sem ela o servidor informa quantos registros seriam afetados e não grava. A regra vale só para a edição de categoria.
 16. Na consulta de saldos, **todos os totais** (por categoria e geral) são calculados no service, nunca no JavaScript. A contagem de indisponíveis reusa `calcular_status`. Categorias e materiais saem em ordem alfabética sem diferenciar maiúsculas de minúsculas.
 
-## 7. Plano em sprints (1 a 6 concluídas; 7 em andamento)
+## 7. Plano em sprints (1 a 7 concluídas)
 
 ### Sprint 1 — Fundação e cadastro
 - Setup do projeto (FastAPI, SQLAlchemy, pytest, ruff, estrutura de pastas)
@@ -237,13 +237,13 @@ Uma visão de leitura para **consultar saldos**: resumo por categoria e saldo po
 - Fora desta sprint: saldo em data passada e extrato de movimentações (histórico em tela segue fora do escopo).
 - **Pronto quando:** a tela mostra os totais corretos por categoria e o saldo de cada material, acompanhando entradas e saídas, para estoquista e operador. **Verificado:** CA-11 passa (testes `test_ca11_*`) e a tela foi conferida no navegador em desktop e celular, com os números acompanhando uma saída.
 
-### Sprint 7 — Documento de visão do produto (em andamento)
+### Sprint 7 — Documento de visão do produto (concluída)
 Documento de produto, não de código: `docs/visao-do-produto.md` (Markdown, decidido).
 1. **Alinhar o sumário** (**feito**, com o dono do projeto). Decisões: público = **equipe e donos do produto** (tom de produto, com detalhe de perfis, escopo, evolução e riscos); contexto = **genérico, um escritório** (sem organização, equipe nem números inventados; onde faltar dado, "a definir"); métricas = **propostas por mim, marcadas como hipóteses** (sem metas numéricas inventadas); **sem seção de "Próximos passos"** (o documento descreve o que existe hoje).
    Sumário final: (1) Resumo; (2) Problema e oportunidade; (3) Usuários e perfis; (4) Objetivos e proposta de valor; (5) Escopo atual; (6) Fora do escopo; (7) Evolução do produto (as sprints em linguagem de produto); (8) Princípios do produto; (9) Métricas de sucesso (hipóteses); (10) Premissas, restrições e riscos (inclusive as simplificações de segurança do protótipo, como limitações do estado atual).
 2. **Escrever o documento** nesse sumário, em português, claro e direto (cerca de 4 a 6 páginas), separando o que o sistema **faz** do que **não faz**.
-3. **Revisar contra o sistema** (toda afirmação deve valer hoje), ligar o documento no README e em `docs/`.
-- **Pronto quando:** o documento está escrito, revisado e versionado, e nada nele contradiz o que o sistema faz.
+3. **Revisar contra o sistema** (toda afirmação deve valer hoje), ligar o documento no README e em `docs/`. **Feito.** A revisão achou e corrigiu cinco imprecisões: (a) "todas as mensagens em português" era falso, pois endereços inexistentes (`404 "Not Found"`) e métodos não permitidos (`405 "Method Not Allowed"`) respondem em inglês (corrigido também no README e em `docs/api.md`); (b) uma linha "quem decide compras" sugeria um perfil que não existe; (c) "histórico dessa pessoa" sugeria um histórico que o sistema não tem; (d) o princípio "avisar antes de afetar" soava geral, mas hoje vale só para a edição de categoria; (e) a tela Saldos poderia ser confundida com os relatórios e painéis que estão fora do escopo.
+- **Pronto quando:** o documento está escrito, revisado e versionado, e nada nele contradiz o que o sistema faz. **Verificado** contra o código e o comportamento real (sessão de 8 h, categorias iniciais, permissões, respostas de erro) e ligado no README e em `docs/`.
 
 ## 8. Padrões de código
 

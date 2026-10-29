@@ -1,6 +1,6 @@
 # Arquitetura
 
-Visão técnica do **Controle de Materiais de Escritório**: camadas, modelo de dados, autenticação e permissões, fluxo de uma operação e decisões de integridade.
+Visão técnica do **Controle de Materiais de Escritório**: camadas, modelo de dados, autenticação e permissões, fluxo de uma operação e decisões de integridade. Para o contexto de produto (problema, usuários, escopo e riscos), veja a [visão do produto](visao-do-produto.md).
 
 ## Camadas
 

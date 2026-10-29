@@ -66,8 +66,9 @@ Duas decisões de produto explicam essa divisão: quem cadastra o estoque **não
 |---|---|
 | **Operador** | Registrar uma retirada ou reposição em poucos passos, com resposta imediata do novo saldo e um aviso claro quando o saldo não basta |
 | **Estoquista** | Manter o cadastro organizado por categoria e ter uma visão consolidada do que há e do que está zerado |
-| **Administrador** | Decidir quem entra no sistema e com que papel, e retirar o acesso de alguém na hora, sem apagar o histórico dessa pessoa |
-| **Quem decide compras** (consulta como estoquista ou operador) | Ver o saldo real antes de comprar, o que reduz compras duplicadas e faltas |
+| **Administrador** | Decidir quem entra no sistema e com que papel, e retirar o acesso de alguém na hora, sem apagar o cadastro dessa pessoa |
+
+Quem consulta os saldos (estoquista ou operador) ganha o mesmo: ver o saldo real **antes de comprar ou pedir**, o que ajuda a evitar compras duplicadas e faltas. O sistema não tem um perfil específico para quem decide compras.
 
 ## 5. Escopo atual
 
@@ -104,7 +105,7 @@ O que o produto **faz hoje**, por capacidade.
 ### Qualidade de uso
 - Funciona em **computador e celular**.
 - Acessibilidade básica: campos com rótulo, foco visível, mensagens anunciadas a leitores de tela, alvos de toque de 44 px e contraste conferido.
-- **Todas as mensagens**, inclusive as de erro, estão em português.
+- As **mensagens das telas e os erros das operações** do sistema (saldo insuficiente, CPF inválido, nome repetido e outros) estão em português. A exceção são as respostas padrão do framework para **endereços inexistentes** e **métodos não permitidos**, que saem em inglês ("Not Found", "Method Not Allowed"), e a documentação interativa da API (`/docs`).
 - Testes automatizados cobrem **todos os critérios de aceite** (CA-01 a CA-11).
 
 ## 6. Fora do escopo
@@ -114,7 +115,7 @@ O que o produto **não faz**, de propósito:
 | Área | O que não existe hoje |
 |---|---|
 | **Processos de compra** | Aprovação de requisições, fornecedores, notas fiscais |
-| **Análise e relatórios** | Relatórios, painéis (*dashboards*), exportação de dados |
+| **Análise e relatórios** | Relatórios, painéis analíticos (*dashboards*) e exportação de dados. A tela Saldos é uma **consulta** do estado atual, não um relatório: não há gráficos, períodos nem comparações |
 | **Histórico** | Tela de histórico de movimentações, extrato por material, saldo em data passada, edição ou exclusão de movimentações |
 | **Alertas e integrações** | Alerta de estoque baixo (o mínimo só é exibido), notificações, integração com outros sistemas (ERP, e-mail) |
 | **Organização** | Várias filiais ou locais de estoque |
@@ -148,7 +149,7 @@ Regras que valem em todo o produto e orientam qualquer decisão:
 3. **As regras vivem no servidor.** A interface só mostra e pede; ela não calcula saldo, status nem totais.
 4. **Cada perfil só faz o que lhe cabe**, e isso vale na API e nas telas, não apenas por esconder botões.
 5. **Nada é apagado sem necessidade.** Usuários são inativados, e o histórico de movimentações é preservado.
-6. **Avisar antes de afetar.** Uma mudança que atinge registros existentes informa quantos serão afetados antes de ser gravada.
+6. **Avisar antes de afetar.** Uma mudança que atinge registros existentes informa quantos serão afetados antes de ser gravada. **Hoje isso vale para a edição de categoria**; é o único ponto do sistema em que uma alteração atinge outros registros.
 7. **Falar a língua de quem usa.** Mensagens claras, em português, que dizem o que aconteceu e o que fazer.
 8. **Acessível e responsivo.** Utilizável em computador e celular, por quem usa teclado e por quem usa leitor de tela.
 
@@ -184,12 +185,13 @@ Esta seção descreve **o estado atual**: o que se assume, o que limita o produt
 - A movimentação **não registra o autor**, e **não há histórico em tela**.
 - O estoque mínimo é só informativo: **não há alerta de estoque baixo**.
 - A comparação de maiúsculas e minúsculas na busca por nome é garantida para letras sem acento; letras acentuadas podem não casar entre maiúscula e minúscula.
+- Endereços inexistentes e métodos não permitidos respondem com a mensagem padrão do framework, em inglês.
 
 ### Riscos e limitações do protótipo
 
 | Risco | Situação hoje | Efeito |
 |---|---|---|
-| **Segurança de senhas simplificada** | A senha mínima é de 6 caracteres, existe uma **senha padrão (`123456`)** para quem é cadastrado sem senha, e **não há limite de tentativas** de login | Qualquer pessoa que descubra um CPF e use a senha padrão entra |
+| **Segurança de senhas simplificada** | A senha mínima é de 6 caracteres, existe uma **senha padrão (`123456`)** para quem é cadastrado sem senha, e **não há limite de tentativas** de login | Quem descobrir o CPF de um usuário que ficou com a senha padrão entra com ela |
 | **Administrador padrão no código** | Em um banco sem usuários, o sistema cria um administrador com CPF e senha conhecidos, definidos no próprio código | Quem conhece o projeto sabe esse acesso |
 | **Chave da sessão** | Sem configuração, uma chave aleatória é gerada a cada início do sistema | Todos são desconectados quando o sistema reinicia |
 | **Cookie sem proteção de HTTPS** | O cookie de sessão funciona em conexão comum (sem a marca "seguro") | Adequado para uso local, não para a internet |
