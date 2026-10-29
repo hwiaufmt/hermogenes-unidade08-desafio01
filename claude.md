@@ -64,6 +64,7 @@ Premissas de stack acima podem ser trocadas; confirme antes de mudar.
 └── tests/
     ├── conftest.py          # fixtures: cliente_anonimo, entrar_como, client
     ├── test_cadastro.py, test_categorias.py, test_entrada.py, test_saida.py
+    ├── test_edicao_categoria.py, test_categoria_nome_sem_case.py
     ├── test_estoque.py, test_pesquisa.py, test_fluxo_completo.py, test_erros.py
     ├── test_usuarios.py, test_login.py, test_administrador_inicial.py
     └── test_permissoes.py, test_acesso_rotas.py, test_paginas.py
@@ -74,7 +75,7 @@ Premissas de stack acima podem ser trocadas; confirme antes de mudar.
 ## 3. Modelo de dados
 
 **Categoria**
-- `id`, `nome` (único, obrigatório)
+- `id`, `nome` (obrigatório; único **sem diferenciar maiúsculas de minúsculas**, e **editável** pelo estoquista)
 - Seed inicial: **Papelaria**, **Escrita**, **Informática**
 
 **Material**
@@ -99,8 +100,9 @@ Premissas de stack acima podem ser trocadas; confirme antes de mudar.
 
 | Operação | Endpoint | Descrição |
 |---|---|---|
-| Listar categorias | `GET /categorias` | usado nos formulários e filtros |
+| Listar categorias | `GET /categorias` | usado nos formulários e filtros; informa `total_materiais` de cada categoria |
 | Criar categoria | `POST /categorias` | `nome` obrigatório e único **sem diferenciar maiúsculas de minúsculas** ("Escrita" = "escrita"); vazio ou duplicado → `422` |
+| Editar categoria | `PUT /categorias/{id}` | corpo `{nome, confirmar}`; mesmas regras de nome; com materiais **exige `confirmar: true`**, senão `409` com `afetados` (quantos registros seriam afetados) e nada é gravado |
 | Cadastrar material | `POST /materiais` | exige categoria válida |
 | Registrar entrada | `POST /materiais/{id}/entrada` | soma ao saldo |
 | Registrar saída | `POST /materiais/{id}/saida` | subtrai do saldo, com bloqueio |
@@ -114,7 +116,7 @@ Páginas web (todas exigem login, exceto `/login`):
 |---|---|---|
 | Pesquisa (estoque agrupado por categoria, com busca e filtros) | `/pesquisa` | estoquista, operador |
 | Movimentar | `/movimentar` | operador |
-| Cadastro (material e "Nova categoria") | `/materiais/novo` | estoquista |
+| Cadastro (material, "Nova categoria" e lista de categorias com edição e confirmação) | `/materiais/novo` | estoquista |
 | Usuários | `/gestao/usuarios` | administrador |
 | Login | `/login` | público |
 
@@ -125,14 +127,15 @@ Páginas web (todas exigem login, exceto `/login`):
 | Ação | Estoquista | Operador | Administrador |
 |---|---|---|---|
 | Criar categoria | ✅ | | |
+| Editar categoria (com aviso de impacto) | ✅ | | |
 | Cadastrar material (estoque inicial e mínimo) | ✅ | | |
 | Consultar / pesquisar estoque | ✅ | ✅ | |
 | Movimentar (entrada e saída) | | ✅ | |
 | Manter usuários | | | ✅ |
 
-Leituras de apoio aceitam "qualquer uma de" várias ações: `GET /categorias` serve a quem consulta, cadastra material ou cria categoria; a lista de materiais serve também a quem movimenta.
+Leituras de apoio aceitam "qualquer uma de" várias ações: `GET /categorias` serve a quem consulta, cadastra material, cria ou edita categoria; a lista de materiais serve também a quem movimenta.
 
-Códigos de erro: `401` sem login; `403` perfil sem permissão; `404` material/categoria/usuário inexistente; `422` dado inválido (inclui categoria inválida, quantidade ≤ 0, CPF inválido, filtro de status inválido); `409` saldo insuficiente, CPF de usuário duplicado ou inativar/rebaixar o último administrador. Respostas de erro com mensagem clara em português, sempre como texto em `detail`.
+Códigos de erro: `401` sem login; `403` perfil sem permissão; `404` material/categoria/usuário inexistente; `422` dado inválido (inclui categoria inválida, quantidade ≤ 0, CPF inválido, filtro de status inválido); `409` saldo insuficiente, CPF de usuário duplicado, inativar/rebaixar o último administrador, ou alterar categoria com materiais sem confirmação (a resposta traz também `afetados`, um inteiro). Respostas de erro com mensagem clara em português, sempre como texto em `detail`.
 
 ## 5. Critérios de aceite
 
@@ -154,9 +157,9 @@ Códigos de erro: `401` sem login; `403` perfil sem permissão; `404` material/c
 - **CA-07 CPF único:** não é permitido duplicar usuários; o campo único é o **CPF**. CPF repetido (mesmo com máscara diferente, mesmo de usuário inativo) → rejeitar com `409` e não gravar nada. O CPF precisa ter dígitos verificadores válidos.
 - **CA-08 Permissões por perfil:** cada perfil só faz o que a matriz da seção 4 permite, **na API e nas telas**. Sem login → `401` (páginas: redireciona ao login); sem permissão → `403`. Estoquista cadastra e informa valores de estoque; operador só movimenta e pesquisa; administrador só mantém usuários.
 
-### Categorias e consulta de saldo (Sprints 5 e 6 — planejados)
+### Categorias e consulta de saldo (CA-09 e CA-10: Sprint 5, concluída; CA-11: Sprint 6, planejado)
 - **CA-09 Edição de categoria:** o estoquista pode alterar o nome de uma categoria. Nome vazio ou já usado por outra categoria (**sem diferenciar maiúsculas de minúsculas**) → `422`, sem gravar; categoria inexistente → `404`; outros perfis → `403`.
-- **CA-10 Aviso de impacto:** antes de alterar uma categoria que tem materiais, o sistema informa **quantos registros serão afetados** e só grava com confirmação. Sem confirmação, o servidor responde `409` com a quantidade e **nada é gravado**. Categoria sem materiais grava direto.
+- **CA-10 Aviso de impacto:** antes de alterar uma categoria que tem materiais, o sistema informa **quantos registros serão afetados** e só grava com confirmação. Sem confirmação (`confirmar: true`), o servidor responde `409` com a quantidade (`afetados`) e **nada é gravado**. Categoria sem materiais grava direto. Nome repetido é recusado antes de pedir a confirmação.
 - **CA-11 Consulta de saldo:** a visão **Saldos** mostra, por categoria, o total de materiais, o total de unidades e quantos estão indisponíveis, e o saldo atual de cada material, sempre coerente com as entradas e saídas já registradas.
 
 ## 6. Regras de negócio e integridade
@@ -175,8 +178,9 @@ Códigos de erro: `401` sem login; `403` perfil sem permissão; `404` material/c
 12. Usuários não são apagados, apenas inativados. O **último administrador ativo** não pode ser inativado nem rebaixado.
 13. O CPF de um usuário não pode ser alterado depois de cadastrado.
 14. O nome da categoria é único **sem diferenciar maiúsculas de minúsculas** ("Escrita" é igual a "escrita"), na criação, na edição e no seed. A comparação é feita no service com `casefold` (o `lower()` do SQLite só trata ASCII); **acentos diferenciam** ("Informatica" ≠ "Informática"). Na mensagem de erro aparece o nome já existente. O índice único do banco continua diferenciando maiúsculas (não há migração) e serve só de rede de segurança.
+15. Alterar o nome de uma categoria que tem materiais exige confirmação explícita do cliente (`confirmar: true`); sem ela o servidor informa quantos registros seriam afetados e não grava. A regra vale só para a edição de categoria.
 
-## 7. Plano em sprints (1 a 4 concluídas; 5 a 7 planejadas)
+## 7. Plano em sprints (1 a 5 concluídas; 6 e 7 planejadas)
 
 ### Sprint 1 — Fundação e cadastro
 - Setup do projeto (FastAPI, SQLAlchemy, pytest, ruff, estrutura de pastas)
@@ -211,13 +215,14 @@ Códigos de erro: `401` sem login; `403` perfil sem permissão; `404` material/c
 - Testes: CA-07, CA-08, login/sessão, acesso por perfil e rota (`test_acesso_rotas.py`), páginas por perfil e busca
 - **Pronto quando:** CA-01 a CA-08 passam e cada perfil, no navegador, enxerga e faz somente o que a matriz permite.
 
-### Sprint 5 — Edição de categoria com aviso de impacto (planejada; pedido explícito, amplia o escopo)
+### Sprint 5 — Edição de categoria com aviso de impacto (concluída; pedido explícito, amplia o escopo)
 Hoje a categoria só pode ser criada. Passa a poder ser editada, e **antes de gravar o sistema informa quantos registros serão afetados**.
 1. **Service e API:** nova ação `EDITAR_CATEGORIA` na matriz (concedida ao **estoquista**); `PUT /categorias/{id}` altera o **nome** (único sem diferenciar maiúsculas; vazio ou repetido → `422`; categoria inexistente → `404`). Se a categoria tem materiais, o servidor **exige confirmação**: sem ela responde `409` informando a quantidade de materiais afetados; com a confirmação, grava. Sem materiais, grava direto. A lista de categorias passa a informar quantos materiais cada uma tem.
 2. **Tela:** na página Cadastro, lista de categorias com botão "Editar" e janela de confirmação acessível (`<dialog>`) que mostra "esta mudança afetará N registros" antes de gravar.
 3. **Fechamento:** testes CA-09 e CA-10, documentação (README, `docs/`) e este arquivo.
 - Regra do aviso vale **só para a edição de categoria** (decidido); não muda o banco (o material liga à categoria pelo id), logo não há migração.
-- **Pronto quando:** renomear uma categoria sem materiais grava direto; com materiais, só grava depois de informar a quantidade afetada e receber a confirmação; o estoquista consegue pela tela e os demais perfis recebem `403`.
+- Durante a sprint o dono do projeto pediu que o nome da categoria **não diferencie maiúsculas de minúsculas** ("Escrita" = "escrita"), na criação, na edição e no seed (regra 14).
+- **Pronto quando:** renomear uma categoria sem materiais grava direto; com materiais, só grava depois de informar a quantidade afetada e receber a confirmação; o estoquista consegue pela tela e os demais perfis recebem `403`. **Verificado:** CA-09 e CA-10 passam (testes `test_ca09_*` e `test_ca10_*`) e a tela foi conferida no navegador em desktop e celular.
 
 ### Sprint 6 — Consulta de saldo de materiais (planejada)
 Uma visão de leitura para **consultar saldos**: resumo por categoria e saldo por material (decidido). Usa só dados que já existem; sem migração.

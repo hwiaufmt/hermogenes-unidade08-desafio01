@@ -6,7 +6,7 @@ Este é um **MVP** que valida o ciclo *cadastrar → entrada → saída → cons
 
 ## Funcionalidades
 
-- **Categorias:** seed inicial (Papelaria, Escrita, Informática) e criação de novas pela interface.
+- **Categorias:** seed inicial (Papelaria, Escrita, Informática), criação de novas e **edição do nome** pela interface. O nome é único sem diferenciar maiúsculas de minúsculas ("Escrita" = "escrita"). Ao editar uma categoria que tem materiais, o sistema **informa quantos registros serão afetados** e só grava depois da confirmação.
 - **Cadastro de material:** exige categoria válida; estoque inicial e estoque mínimo opcionais (padrão 0).
 - **Entrada e saída:** a entrada soma ao saldo; a saída subtrai e é **bloqueada** se o saldo for insuficiente.
 - **Status automático:** saldo 0 → **Indisponível**; qualquer outro → **Disponível**. Não há campo editável.
@@ -20,6 +20,7 @@ Este é um **MVP** que valida o ciclo *cadastrar → entrada → saída → cons
 | Ação | Estoquista | Operador | Administrador |
 |---|---|---|---|
 | Criar categoria | ✅ | | |
+| Editar categoria (com aviso de impacto) | ✅ | | |
 | Cadastrar material (estoque inicial e mínimo) | ✅ | | |
 | Pesquisar / consultar estoque | ✅ | ✅ | |
 | Movimentar (entrada e saída) | | ✅ | |
@@ -92,7 +93,7 @@ Cada critério de aceite tem testes nomeados com o ID (`test_ca01_...` a `test_c
 | `/` | leva cada perfil à sua primeira tela | logado |
 | `/pesquisa` | **Pesquisa:** saldos agrupados por categoria, com busca e filtros | estoquista, operador |
 | `/movimentar` | **Movimentar:** registrar entrada ou saída e ver o saldo | operador |
-| `/materiais/novo` | **Cadastro:** novo material e nova categoria | estoquista |
+| `/materiais/novo` | **Cadastro:** novo material, nova categoria e lista de categorias com edição | estoquista |
 | `/gestao/usuarios` | **Usuários:** cadastrar, editar, inativar e reativar | administrador |
 
 Sem login, as páginas redirecionam para `/login`. Sem permissão, mostram "Acesso negado" (`403`).
@@ -104,8 +105,9 @@ Sem login, as páginas redirecionam para `/login`. Sem permissão, mostram "Aces
 | `POST /login` | Entra com `{"cpf", "senha"}` | `401` CPF ou senha inválidos |
 | `POST /logout` | Encerra a sessão | |
 | `GET /me` | Usuário logado | `401` |
-| `GET /categorias` | Lista as categorias | `401`, `403` |
+| `GET /categorias` | Lista as categorias, com `total_materiais` de cada uma | `401`, `403` |
 | `POST /categorias` | Cria categoria (`nome` único, **sem diferenciar maiúsculas de minúsculas**) | `422` vazio ou duplicado |
+| `PUT /categorias/{id}` | Altera o nome. Com materiais, exige `confirmar: true` | `404`, `422` vazio ou duplicado, `409` sem confirmação (informa `afetados`) |
 | `GET /materiais` | Lista materiais; filtros `?categoria_id=`, `?q=`, `?status=` | `404` categoria inexistente, `422` status inválido |
 | `GET /materiais/{id}` | Consulta um material | `404` |
 | `POST /materiais` | Cadastra material | `422` categoria ausente/inválida, valores inválidos |
@@ -123,6 +125,8 @@ Todas as rotas, exceto `POST /login`, exigem login (`401`) e a permissão do per
 - A verificação de saldo e a subtração na saída são **atômicas** (`UPDATE ... WHERE quantidade >= :qtd`).
 - Saldo e movimentação são gravados na mesma transação (tudo ou nada).
 - `estoque_minimo` é guardado e exibido; não dispara alerta no MVP.
+- O nome da categoria é único **sem diferenciar maiúsculas de minúsculas**; acentos diferenciam.
+- Alterar o nome de uma categoria com materiais exige confirmação: sem ela o servidor responde `409`, diz quantos registros seriam afetados e não grava.
 - O **CPF** é único (com dígitos verificadores válidos); CPF repetido, mesmo com máscara diferente, é recusado.
 - A senha tem pelo menos 6 caracteres (protótipo; a senha padrão é `123456`) e é guardada só como hash `scrypt`.
 - Usuários são **inativados**, não apagados. O último administrador ativo não pode ser inativado nem rebaixado.
@@ -159,7 +163,7 @@ Camadas: router (HTTP) → service (regra de negócio) → models (dados). Nenhu
 
 ## Fora do escopo
 
-Aprovação de requisições, fornecedores e notas fiscais, relatórios e dashboards, notificações, integrações, multi-filial, edição/exclusão de movimentações, histórico em tela, exportação e indicador de estoque baixo.
+Aprovação de requisições, fornecedores e notas fiscais, relatórios e dashboards, notificações, integrações, multi-filial, edição/exclusão de movimentações, exclusão de categorias, histórico em tela, exportação e indicador de estoque baixo.
 
 Também fora do escopo por ora: troca e recuperação de senha pelo próprio usuário, limite de tentativas de login, edição de CPF e registrar **quem** fez cada movimentação.
 

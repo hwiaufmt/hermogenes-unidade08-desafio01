@@ -8,7 +8,7 @@ Com o app rodando, abra <http://localhost:8000>. Você precisa **entrar com CPF 
 
 | Perfil | O que faz | Telas |
 |---|---|---|
-| **Estoquista** | cadastra materiais (com estoque inicial e mínimo), cria categorias e consulta o estoque | Pesquisa, Cadastro |
+| **Estoquista** | cadastra materiais (com estoque inicial e mínimo), cria e edita categorias e consulta o estoque | Pesquisa, Cadastro |
 | **Operador** | registra entradas e saídas e pesquisa o estoque | Pesquisa, Movimentar |
 | **Administrador** | mantém os usuários (e só isso) | Usuários |
 
@@ -79,7 +79,20 @@ Clique em **Cadastrar material**. Uma mensagem confirma o cadastro, ou explica o
 
 Se a categoria que você precisa não existe, digite o nome em **Nova categoria** e clique em **Criar categoria**. Ela aparece na lista de categorias do formulário de material, já selecionada. Nomes repetidos são recusados **sem diferenciar maiúsculas de minúsculas**: se já existe "Escrita", não dá para criar "escrita" nem "ESCRITA". As categorias iniciais são Papelaria, Escrita e Informática.
 
-> Editar ou excluir categorias e materiais não faz parte do MVP. Os valores de estoque (inicial e mínimo) são informados no cadastro.
+### Editar categoria
+
+Mais abaixo na página, a seção **Categorias cadastradas** lista cada categoria com **quantos materiais ela tem** e um botão **Editar**.
+
+1. Clique em **Editar** na linha da categoria. Abre uma janela com o nome atual selecionado.
+2. Digite o novo nome e clique em **Salvar alteração** (ou tecle Enter). **Cancelar**, ou a tecla Esc, fecha a janela sem mudar nada.
+3. **Se a categoria não tem materiais**, o nome é gravado na hora.
+4. **Se a categoria tem materiais**, o sistema **não grava ainda** e abre uma janela de confirmação, por exemplo: *"Esta categoria tem 3 materiais; a mudança de nome afetará 3 registros. Confirme para gravar."* Escolha:
+   - **Confirmar alteração:** grava. Uma mensagem informa o novo nome e quantos registros foram afetados, e os materiais passam a aparecer na categoria com o novo nome.
+   - **Voltar:** reabre a edição, com o nome que você digitou, para ajustar ou desistir.
+
+Se o novo nome já existir (em qualquer caixa, "papelaria" conta como "Papelaria"), o erro aparece na própria janela de edição e **nenhuma confirmação é pedida**. Trocar só maiúsculas e minúsculas do próprio nome ("Limpeza" para "LIMPEZA") é permitido e segue as mesmas regras acima.
+
+> Excluir categorias e editar ou excluir materiais não faz parte do MVP. Os valores de estoque (inicial e mínimo) são informados no cadastro.
 
 ## Tela Movimentar (`/movimentar`, operador)
 
@@ -121,6 +134,7 @@ Os erros aparecem em uma faixa no topo da tela, em português. As mais comuns:
 | A quantidade deve ser um número inteiro maior que zero. | usar 1 ou mais |
 | Saldo insuficiente de '...': disponível N, solicitado M. | pedir no máximo o saldo disponível, ou registrar uma entrada antes |
 | Já existe uma categoria chamada '...'. | usar a categoria existente (a mensagem mostra o nome já cadastrado, mesmo que você tenha digitado em outra caixa) |
+| Esta categoria tem N materiais; a mudança de nome afetará N registros. Confirme para gravar. | não é um erro: é o aviso antes de gravar. Use **Confirmar alteração** para seguir ou **Voltar** para desistir |
 | CPF inválido. | conferir os 11 dígitos |
 | Já existe um usuário com o CPF .... | o usuário já está cadastrado (talvez inativo; reative-o) |
 | A senha deve ter pelo menos 6 caracteres. | escolher uma senha maior (ou deixar em branco para usar a padrão) |

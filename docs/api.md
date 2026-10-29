@@ -21,7 +21,7 @@ API REST em JSON. Com o app rodando, a documentação interativa (Swagger) fica 
 | `401` | sem login, sessão inválida/expirada, usuário inativo; ou CPF/senha errados no login |
 | `403` | logado, mas o perfil não tem a permissão da rota |
 | `404` | material, categoria ou usuário inexistente |
-| `409` | saldo insuficiente para a saída; CPF de usuário já cadastrado; inativar ou rebaixar o último administrador |
+| `409` | saldo insuficiente para a saída; CPF de usuário já cadastrado; inativar ou rebaixar o último administrador; alterar categoria com materiais sem confirmação (a resposta traz também `afetados`) |
 | `422` | dado inválido: campo ausente, tipo errado, valor fora do limite, categoria inválida, nome duplicado, CPF/e-mail/perfil/senha inválidos, filtro de status inválido |
 
 ### Objetos
@@ -67,6 +67,7 @@ O `cpf` vem só com dígitos. A senha e o hash **nunca** são devolvidos.
 | Ação | Estoquista | Operador | Administrador |
 |---|---|---|---|
 | `criar_categoria` | ✅ | | |
+| `editar_categoria` | ✅ | | |
 | `cadastrar_material` | ✅ | | |
 | `consultar_estoque` | ✅ | ✅ | |
 | `movimentar` | | ✅ | |
@@ -115,17 +116,17 @@ Devolve o usuário da sessão. **Permissão:** apenas estar logado.
 
 ### `GET /categorias`
 
-**Permissão:** `consultar_estoque`, `cadastrar_material` ou `criar_categoria` (qualquer uma).
+**Permissão:** `consultar_estoque`, `cadastrar_material`, `criar_categoria` ou `editar_categoria` (qualquer uma).
 
-Lista as categorias em ordem alfabética. Já vem com Papelaria, Escrita e Informática.
+Lista as categorias em ordem alfabética, com **quantos materiais cada uma tem** (`total_materiais`). Já vem com Papelaria, Escrita e Informática.
 
 **200**
 
 ```json
 [
-  { "id": 2, "nome": "Escrita" },
-  { "id": 3, "nome": "Informática" },
-  { "id": 1, "nome": "Papelaria" }
+  { "id": 2, "nome": "Escrita", "total_materiais": 3 },
+  { "id": 3, "nome": "Informática", "total_materiais": 0 },
+  { "id": 1, "nome": "Papelaria", "total_materiais": 1 }
 ]
 ```
 
@@ -145,9 +146,45 @@ O nome é aparado (espaços nas pontas são removidos). Deve ser único **sem di
 
 | Resposta | Descrição |
 |---|---|
-| `201` | a categoria criada |
+| `201` | a categoria criada (`id` e `nome`) |
 | `422` | `"O nome da categoria é obrigatório."` (vazio ou só espaços) |
 | `422` | `"Já existe uma categoria chamada 'Limpeza'."` (mesmo que você tenha digitado `limpeza`; a mensagem mostra o nome que já existe) |
+
+### `PUT /categorias/{id}`
+
+**Permissão:** `editar_categoria`.
+
+Altera o **nome** da categoria. As mesmas regras de nome da criação valem aqui (aparado, único sem diferenciar maiúsculas de minúsculas).
+
+**Corpo**
+
+```json
+{ "nome": "Escritório", "confirmar": false }
+```
+
+`confirmar` é opcional (padrão `false`). Quando a categoria **tem materiais**, a alteração só é gravada com `"confirmar": true`: sem isso o servidor **não grava** e informa quantos registros seriam afetados. Quando a categoria não tem materiais, grava direto, com ou sem `confirmar`.
+
+| Resposta | Descrição |
+|---|---|
+| `200` | a categoria atualizada, com `total_materiais` |
+| `404` | `"A categoria 99 não existe."` |
+| `409` | precisa de confirmação (ver abaixo) |
+| `422` | `"O nome da categoria é obrigatório."` |
+| `422` | `"Já existe uma categoria chamada 'Papelaria'."` (nome repetido, em qualquer caixa; é recusado **antes** de pedir confirmação) |
+| `422` | `"Valor inválido no campo 'confirmar'."` |
+
+**`409` de confirmação**
+
+```json
+{
+  "detail": "Esta categoria tem 3 materiais; a mudança de nome afetará 3 registros. Confirme para gravar.",
+  "afetados": 3
+}
+```
+
+Além do `detail` em texto, esta resposta traz `afetados`, o número de materiais da categoria. Para gravar, repita a chamada com `"confirmar": true`.
+
+Manter o mesmo nome não altera nada e não pede confirmação. Mudar só a caixa do próprio nome ("Limpeza" → "LIMPEZA") é permitido e, se a categoria tem materiais, pede confirmação como qualquer outra mudança de nome.
 
 ---
 

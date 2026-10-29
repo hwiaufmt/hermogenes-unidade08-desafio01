@@ -24,7 +24,7 @@ Navegador (HTML + JS)  ──fetch──►  routers  ──►  services  ─�
 
 - **`main.py`**: cria o app, registra o `SessionMiddleware`, os routers, os arquivos estáticos e os tratadores de erro. No startup cria as tabelas, aplica o seed das categorias e cria o administrador inicial.
 - **`routers/autenticacao.py`**: `POST /login`, `POST /logout` e `GET /me`.
-- **`routers/categorias.py`**: `GET` e `POST /categorias`.
+- **`routers/categorias.py`**: `GET /categorias` (com `total_materiais`), `POST /categorias` e `PUT /categorias/{id}` (edição com confirmação).
 - **`routers/materiais.py`**: `GET /materiais` (com `categoria_id`, `q` e `status`), `GET /materiais/{id}` e `POST /materiais`.
 - **`routers/movimentacoes.py`**: `POST /materiais/{id}/entrada` e `.../saida`.
 - **`routers/usuarios.py`**: `/usuarios` (listar, consultar, criar, atualizar, inativar e reativar).
@@ -80,6 +80,7 @@ A matriz `PERMISSOES` em `app/permissoes.py` liga cada perfil a um conjunto de a
 | Ação | Estoquista | Operador | Administrador |
 |---|---|---|---|
 | `criar_categoria` | ✅ | | |
+| `editar_categoria` | ✅ | | |
 | `cadastrar_material` | ✅ | | |
 | `consultar_estoque` | ✅ | ✅ | |
 | `movimentar` | | ✅ | |
@@ -124,6 +125,7 @@ A entrada segue o mesmo caminho, com `quantidade = quantidade + :n`.
 | Tudo ou nada | Saldo e movimentação no mesmo `commit`; `rollback` em qualquer falha |
 | Categoria obrigatória e válida | Verificada em `criar_material` antes de gravar |
 | Categoria única, **sem diferenciar maiúsculas** | O service compara os nomes com `casefold` (o `lower()` do SQLite só trata ASCII) ao criar, editar e semear; acentos diferenciam. O índice único de `categorias.nome` continua diferenciando maiúsculas (sem migração) e vale como rede de segurança: `IntegrityError` também vira `CategoriaDuplicadaError` |
+| Quem altera o nome de uma categoria sabe o que será afetado | `atualizar_categoria` conta os materiais da categoria; com materiais e sem `confirmar`, levanta `ConfirmacaoNecessariaError` e **nada é gravado**. A checagem de nome repetido vem antes, para não pedir confirmação de algo que falharia |
 | Quantidade inteira positiva | Validação no schema e, de novo, no service |
 | CPF único | Índice único em `usuarios.cpf` (só dígitos); `IntegrityError` vira `CpfDuplicadoError` |
 | CPF válido | Dígitos verificadores conferidos no schema; valor guardado só com dígitos |
@@ -138,6 +140,7 @@ Definidas em `services/estoque.py` e `services/usuarios.py` e convertidas em HTT
 |---|---|
 | `CategoriaInexistenteError` | `422` ao cadastrar material; `404` ao filtrar a listagem |
 | `CategoriaDuplicadaError` | `422` |
+| `ConfirmacaoNecessariaError` | `409`, com o campo extra `afetados` (o router devolve um `JSONResponse` com `detail` e `afetados`) |
 | `MaterialInexistenteError` | `404` |
 | `SaldoInsuficienteError` | `409` |
 | `QuantidadeInvalidaError` | defesa do service; na API o schema responde antes, com `422` |
@@ -150,11 +153,11 @@ Definidas em `services/estoque.py` e `services/usuarios.py` e convertidas em HTT
 
 Módulos ES, sem framework e sem variáveis globais:
 
-- **`api.js`**: `requisitar`, `enviarJson`, `mostrarMensagem` e a leitura de mensagens de erro da API. Uma resposta `401` (fora do login) leva a `/login`, para o caso de a sessão cair com a página aberta.
+- **`api.js`**: `requisitar`, `enviarJson` (aceita o método, ex.: `PUT`), `mostrarMensagem` e a leitura de mensagens de erro da API. Os erros da API são lançados como `ErroDeApi`, que carrega o `status` e o corpo da resposta (a tela de categorias lê o `afetados` do `409`). Uma resposta `401` (fora do login) leva a `/login`, para o caso de a sessão cair com a página aberta.
 - **`login.js`** e **`sair.js`**: entrar e sair. Depois de entrar, `/` leva à primeira tela do perfil.
 - **`pesquisa.js`**: carrega categorias e materiais, envia busca, categoria e status à API (a busca por nome espera 250 ms depois da digitação), **agrupa por categoria para exibir** e mostra um resumo.
 - **`movimentar.js`**: lista materiais, mostra o saldo vindo da API e registra a movimentação.
-- **`cadastro.js`**: cadastra material e cria categoria, atualizando a lista de categorias.
+- **`cadastro.js`**: cadastra material, cria categoria e **edita categoria**: lista as categorias com o total de materiais e abre dois `<dialog>` nativos, um de edição e outro de confirmação. O texto do aviso ("afetará N registros") vem pronto do `detail` do `409`; a tela não monta a frase nem calcula nada. "Voltar" reabre a edição com o nome digitado. O botão "Editar" só existe para quem tem a ação `editar_categoria`.
 - **`usuarios.js`**: lista, cadastra, edita (CPF travado, senha opcional), inativa e reativa usuários.
 
 O menu e o nome do usuário vêm renderizados pelo servidor (`base.html`), já filtrados pelo perfil.
@@ -175,6 +178,8 @@ Fixtures principais:
 |---|---|
 | `test_cadastro.py` | CA-01, valores inválidos, filtro por categoria |
 | `test_categorias.py` | listar o seed, criar, duplicada, vazia |
+| `test_edicao_categoria.py` | CA-09 e CA-10: editar, nome vazio/repetido, 404, confirmação, singular/plural e totais |
+| `test_categoria_nome_sem_case.py` | nome de categoria único sem diferenciar maiúsculas (criar, editar e seed) |
 | `test_entrada.py` | CA-02 e entradas inválidas |
 | `test_saida.py` | CA-03, CA-04 e saídas inválidas |
 | `test_estoque.py` | CA-05, CA-06 e registro das movimentações |
