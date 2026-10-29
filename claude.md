@@ -154,6 +154,11 @@ Códigos de erro: `401` sem login; `403` perfil sem permissão; `404` material/c
 - **CA-07 CPF único:** não é permitido duplicar usuários; o campo único é o **CPF**. CPF repetido (mesmo com máscara diferente, mesmo de usuário inativo) → rejeitar com `409` e não gravar nada. O CPF precisa ter dígitos verificadores válidos.
 - **CA-08 Permissões por perfil:** cada perfil só faz o que a matriz da seção 4 permite, **na API e nas telas**. Sem login → `401` (páginas: redireciona ao login); sem permissão → `403`. Estoquista cadastra e informa valores de estoque; operador só movimenta e pesquisa; administrador só mantém usuários.
 
+### Categorias e consulta de saldo (Sprints 5 e 6 — planejados)
+- **CA-09 Edição de categoria:** o estoquista pode alterar o nome de uma categoria. Nome vazio ou já usado por outra categoria → `422`, sem gravar; categoria inexistente → `404`; outros perfis → `403`.
+- **CA-10 Aviso de impacto:** antes de alterar uma categoria que tem materiais, o sistema informa **quantos registros serão afetados** e só grava com confirmação. Sem confirmação, o servidor responde `409` com a quantidade e **nada é gravado**. Categoria sem materiais grava direto.
+- **CA-11 Consulta de saldo:** a visão **Saldos** mostra, por categoria, o total de materiais, o total de unidades e quantos estão indisponíveis, e o saldo atual de cada material, sempre coerente com as entradas e saídas já registradas.
+
 ## 6. Regras de negócio e integridade
 
 1. Quantidade de entrada/saída: inteiro **maior que zero**.
@@ -170,7 +175,7 @@ Códigos de erro: `401` sem login; `403` perfil sem permissão; `404` material/c
 12. Usuários não são apagados, apenas inativados. O **último administrador ativo** não pode ser inativado nem rebaixado.
 13. O CPF de um usuário não pode ser alterado depois de cadastrado.
 
-## 7. Plano em sprints (1 a 3 concluídas; 4 descrita ao final)
+## 7. Plano em sprints (1 a 4 concluídas; 5 a 7 planejadas)
 
 ### Sprint 1 — Fundação e cadastro
 - Setup do projeto (FastAPI, SQLAlchemy, pytest, ruff, estrutura de pastas)
@@ -205,6 +210,29 @@ Códigos de erro: `401` sem login; `403` perfil sem permissão; `404` material/c
 - Testes: CA-07, CA-08, login/sessão, acesso por perfil e rota (`test_acesso_rotas.py`), páginas por perfil e busca
 - **Pronto quando:** CA-01 a CA-08 passam e cada perfil, no navegador, enxerga e faz somente o que a matriz permite.
 
+### Sprint 5 — Edição de categoria com aviso de impacto (planejada; pedido explícito, amplia o escopo)
+Hoje a categoria só pode ser criada. Passa a poder ser editada, e **antes de gravar o sistema informa quantos registros serão afetados**.
+1. **Service e API:** nova ação `EDITAR_CATEGORIA` na matriz (concedida ao **estoquista**); `PUT /categorias/{id}` altera o **nome** (único; vazio ou repetido → `422`; categoria inexistente → `404`). Se a categoria tem materiais, o servidor **exige confirmação**: sem ela responde `409` informando a quantidade de materiais afetados; com a confirmação, grava. Sem materiais, grava direto. A lista de categorias passa a informar quantos materiais cada uma tem.
+2. **Tela:** na página Cadastro, lista de categorias com botão "Editar" e janela de confirmação acessível (`<dialog>`) que mostra "esta mudança afetará N registros" antes de gravar.
+3. **Fechamento:** testes CA-09 e CA-10, documentação (README, `docs/`) e este arquivo.
+- Regra do aviso vale **só para a edição de categoria** (decidido); não muda o banco (o material liga à categoria pelo id), logo não há migração.
+- **Pronto quando:** renomear uma categoria sem materiais grava direto; com materiais, só grava depois de informar a quantidade afetada e receber a confirmação; o estoquista consegue pela tela e os demais perfis recebem `403`.
+
+### Sprint 6 — Consulta de saldo de materiais (planejada)
+Uma visão de leitura para **consultar saldos**: resumo por categoria e saldo por material (decidido). Usa só dados que já existem; sem migração.
+1. **Service e API:** `GET /saldos` devolve, por categoria, o total de materiais, o total de unidades e quantos estão indisponíveis, com o saldo e o status de cada material. Os totais são calculados no service, nunca no JavaScript. Permissão: `CONSULTAR_ESTOQUE`.
+2. **Tela:** página **Saldos** (item no menu de quem consulta), com o resumo por categoria e, abaixo, os saldos por material; "Indisponível" destacado como na Pesquisa.
+3. **Fechamento:** testes CA-11, documentação e este arquivo.
+- Fora desta sprint: saldo em data passada e extrato de movimentações (histórico em tela segue fora do escopo).
+- **Pronto quando:** a tela mostra os totais corretos por categoria e o saldo de cada material, acompanhando entradas e saídas, para estoquista e operador.
+
+### Sprint 7 — Documento de visão do produto (planejada)
+Documento de produto, não de código: `docs/visao-do-produto.md` (Markdown, decidido).
+1. **Alinhar o sumário** a partir do que existe (este arquivo e `docs/`) e das respostas do dono do projeto.
+2. **Escrever o documento:** problema e oportunidade; usuários e perfis; objetivos e valor; escopo atual e fora do escopo; funcionalidades por sprint; métricas de sucesso; premissas, restrições e riscos (inclusive as simplificações de segurança do protótipo); próximos passos.
+3. **Revisar contra o sistema** (toda afirmação deve valer hoje), ligar o documento no README e em `docs/`.
+- **Pronto quando:** o documento está escrito, revisado e versionado, e nada nele contradiz o que o sistema faz.
+
 ## 8. Padrões de código
 
 ### Python
@@ -230,6 +258,8 @@ Códigos de erro: `401` sem login; `403` perfil sem permissão; `404` material/c
 ## 9. Fora do escopo (não implementar sem pedido explícito)
 
 Aprovação de requisições, fornecedores e notas fiscais, relatórios e dashboards, notificações, integrações (ERP/e-mail), multi-filial, edição/exclusão de movimentações, histórico em tela, app mobile nativo, exportação.
+
+Excluir categorias (a edição do nome é a Sprint 5). Saldo em data passada e extrato de movimentações por material (a Sprint 6 trata só do saldo atual).
 
 Dentro de usuários e acesso, também fora do escopo por ora: recuperação/troca de senha pelo próprio usuário, limite de tentativas de login, login por provedor externo (SSO), edição de CPF e exclusão definitiva de usuários, e registrar quem fez cada movimentação.
 
@@ -295,7 +325,11 @@ O cookie de sessão não tem a flag `Secure` (funciona em `http://localhost`). A
 
 - [x] Manter SQLite no MVP ou usar outro banco? → **SQLite**
 - [x] Exibir indicador de "estoque baixo" usando `estoque_minimo`? → **Não, fora do MVP**
-- [x] Categorias poderão ser criadas pela interface ou só via seed? → **Pela interface** (só criar; editar/excluir fora do escopo), além do seed
+- [x] Categorias poderão ser criadas pela interface ou só via seed? → **Pela interface**, além do seed. **Editar o nome** entra na Sprint 5; **excluir** continua fora do escopo
+- [x] A regra "informar antes de alterar quantos registros serão afetados" vale para qual edição? → **Só a edição de categoria** (Sprint 5)
+- [x] Quem edita categorias? → **Só o estoquista** (nova ação `EDITAR_CATEGORIA`)
+- [x] O que é a "visão de consulta de saldo"? → **Resumo por categoria + saldo por material** (Sprint 6); saldo em data passada e extrato de movimentações ficam de fora
+- [x] Formato do documento de visão do produto? → **Markdown em `docs/visao-do-produto.md`** (Sprint 7)
 - [x] Haverá login em versão futura (impacta registrar "quem retirou")? → ~~Ignorar no MVP~~ **Superado na Sprint 4**: login por CPF + senha
 - [x] Como o usuário se identifica? → **CPF + senha**
 - [x] O estoquista também movimenta e pesquisa? → **Não**: só o descrito (cadastros, valores de estoque e consulta, ver matriz na seção 4)
