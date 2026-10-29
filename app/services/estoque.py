@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from typing import NamedTuple
 
 from sqlalchemy import func, select, update
@@ -55,6 +56,18 @@ class ConfirmacaoNecessariaError(Exception):
         )
 
 
+class ConfirmacaoDeExclusaoError(Exception):
+    """O material tem saldo e a exclusão ainda não foi confirmada."""
+
+    def __init__(self, nome: str, saldo: int) -> None:
+        self.saldo = saldo
+        unidades = _plural(saldo, "unidade", "unidades")
+        super().__init__(
+            f"O material '{nome}' tem {saldo} {unidades} em estoque; "
+            "ao excluir, ele deixa de aparecer no sistema. Confirme para excluir."
+        )
+
+
 class ResumoCategoria(NamedTuple):
     id: int
     nome: str
@@ -72,7 +85,10 @@ def listar_categorias(db: Session) -> list[Categoria]:
 def listar_categorias_com_totais(db: Session) -> list[ResumoCategoria]:
     consulta = (
         select(Categoria.id, Categoria.nome, func.count(Material.id))
-        .outerjoin(Material, Material.categoria_id == Categoria.id)
+        .outerjoin(
+            Material,
+            (Material.categoria_id == Categoria.id) & Material.excluido_em.is_(None),
+        )
         .group_by(Categoria.id, Categoria.nome)
         .order_by(Categoria.nome)
     )
@@ -118,7 +134,7 @@ def consultar_saldos(db: Session) -> ConsultaDeSaldos:
     """
     categorias = sorted(listar_categorias(db), key=lambda c: c.nome.casefold())
     por_categoria: dict[int, list[Material]] = {c.id: [] for c in categorias}
-    for material in db.scalars(select(Material)):
+    for material in db.scalars(select(Material).where(Material.excluido_em.is_(None))):
         if material.categoria_id in por_categoria:
             por_categoria[material.categoria_id].append(material)
     saldos = [
@@ -138,7 +154,7 @@ def consultar_saldos(db: Session) -> ConsultaDeSaldos:
 
 def _contar_materiais_da_categoria(db: Session, categoria_id: int) -> int:
     consulta = select(func.count(Material.id)).where(
-        Material.categoria_id == categoria_id
+        Material.categoria_id == categoria_id, Material.excluido_em.is_(None)
     )
     return db.scalar(consulta) or 0
 
@@ -210,7 +226,10 @@ def listar_materiais(
     status: str | None = None,
 ) -> list[Material]:
     consulta = (
-        select(Material).options(joinedload(Material.categoria)).order_by(Material.nome)
+        select(Material)
+        .options(joinedload(Material.categoria))
+        .where(Material.excluido_em.is_(None))
+        .order_by(Material.nome)
     )
     if categoria_id is not None:
         if db.get(Categoria, categoria_id) is None:
@@ -253,13 +272,24 @@ def obter_material(db: Session, material_id: int) -> Material:
     consulta = (
         select(Material)
         .options(joinedload(Material.categoria))
-        .where(Material.id == material_id)
+        .where(Material.id == material_id, Material.excluido_em.is_(None))
         .execution_options(populate_existing=True)
     )
     material = db.scalar(consulta)
     if material is None:
         raise MaterialInexistenteError(material_id)
     return material
+
+
+def excluir_material(db: Session, material_id: int, confirmar: bool = False) -> None:
+    """Exclusão **lógica**: marca o material como excluído e o registro continua
+    no banco, com as suas movimentações. Com saldo maior que zero, só exclui com
+    `confirmar` (CA-12); sem ela, informa o saldo e não grava."""
+    material = obter_material(db, material_id)
+    if material.quantidade > 0 and not confirmar:
+        raise ConfirmacaoDeExclusaoError(material.nome, material.quantidade)
+    material.excluido_em = datetime.now(UTC)
+    db.commit()
 
 
 def _validar_quantidade(quantidade: int) -> None:
@@ -284,7 +314,7 @@ def registrar_entrada(db: Session, material_id: int, quantidade: int) -> Materia
     _validar_quantidade(quantidade)
     saldo_apos = db.scalar(
         update(Material)
-        .where(Material.id == material_id)
+        .where(Material.id == material_id, Material.excluido_em.is_(None))
         .values(quantidade=Material.quantidade + quantidade)
         .returning(Material.quantidade)
     )
@@ -300,7 +330,11 @@ def registrar_saida(db: Session, material_id: int, quantidade: int) -> Material:
     _validar_quantidade(quantidade)
     saldo_apos = db.scalar(
         update(Material)
-        .where(Material.id == material_id, Material.quantidade >= quantidade)
+        .where(
+            Material.id == material_id,
+            Material.excluido_em.is_(None),
+            Material.quantidade >= quantidade,
+        )
         .values(quantidade=Material.quantidade - quantidade)
         .returning(Material.quantidade)
     )

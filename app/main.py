@@ -20,6 +20,7 @@ from app.config import (
 )
 from app.database import Base, SessionLocal, engine
 from app.erros import tratar_validacao
+from app.migracoes import migrar
 from app.routers import (
     autenticacao,
     categorias,
@@ -58,6 +59,8 @@ def _criar_administrador_inicial(db: Session) -> None:
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     Base.metadata.create_all(engine)
+    for coluna in migrar(engine):
+        registro.info("Banco atualizado: coluna %s criada.", coluna)
     with SessionLocal() as db:
         semear_categorias(db)
         _criar_administrador_inicial(db)

@@ -1,6 +1,7 @@
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -61,3 +62,20 @@ def criar(dados: MaterialCriar, db: DbSessao):
         )
     except estoque.CategoriaInexistenteError as erro:
         raise HTTPException(status_code=422, detail=str(erro)) from erro
+
+
+@router.delete(
+    "/{material_id:int}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(exigir(Acao.EXCLUIR_MATERIAL))],
+)
+def excluir(material_id: int, db: DbSessao, confirmar: bool = False):
+    try:
+        estoque.excluir_material(db, material_id, confirmar=confirmar)
+    except estoque.MaterialInexistenteError as erro:
+        raise HTTPException(status_code=404, detail=str(erro)) from erro
+    except estoque.ConfirmacaoDeExclusaoError as erro:
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content={"detail": str(erro), "saldo": erro.saldo},
+        )

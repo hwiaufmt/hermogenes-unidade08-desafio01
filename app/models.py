@@ -25,6 +25,8 @@ class Material(Base):
     categoria_id: Mapped[int] = mapped_column(ForeignKey("categorias.id"))
     quantidade: Mapped[int] = mapped_column(default=0)
     estoque_minimo: Mapped[int] = mapped_column(default=0)
+    # Exclusão lógica: data e hora (UTC) da exclusão; vazia = material ativo.
+    excluido_em: Mapped[datetime | None] = mapped_column(default=None)
 
     categoria: Mapped[Categoria] = relationship()
 
