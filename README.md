@@ -105,7 +105,7 @@ Sem login, as páginas redirecionam para `/login`. Sem permissão, mostram "Aces
 | `POST /logout` | Encerra a sessão | |
 | `GET /me` | Usuário logado | `401` |
 | `GET /categorias` | Lista as categorias | `401`, `403` |
-| `POST /categorias` | Cria categoria (`nome` único) | `422` vazio ou duplicado |
+| `POST /categorias` | Cria categoria (`nome` único, **sem diferenciar maiúsculas de minúsculas**) | `422` vazio ou duplicado |
 | `GET /materiais` | Lista materiais; filtros `?categoria_id=`, `?q=`, `?status=` | `404` categoria inexistente, `422` status inválido |
 | `GET /materiais/{id}` | Consulta um material | `404` |
 | `POST /materiais` | Cadastra material | `422` categoria ausente/inválida, valores inválidos |

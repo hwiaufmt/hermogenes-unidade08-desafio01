@@ -123,7 +123,7 @@ A entrada segue o mesmo caminho, com `quantidade = quantidade + :n`.
 | Sem saída dupla concorrente | Verificação e subtração atômicas no mesmo `UPDATE` |
 | Tudo ou nada | Saldo e movimentação no mesmo `commit`; `rollback` em qualquer falha |
 | Categoria obrigatória e válida | Verificada em `criar_material` antes de gravar |
-| Categoria única | Índice único em `categorias.nome`; `IntegrityError` vira `CategoriaDuplicadaError` |
+| Categoria única, **sem diferenciar maiúsculas** | O service compara os nomes com `casefold` (o `lower()` do SQLite só trata ASCII) ao criar, editar e semear; acentos diferenciam. O índice único de `categorias.nome` continua diferenciando maiúsculas (sem migração) e vale como rede de segurança: `IntegrityError` também vira `CategoriaDuplicadaError` |
 | Quantidade inteira positiva | Validação no schema e, de novo, no service |
 | CPF único | Índice único em `usuarios.cpf` (só dígitos); `IntegrityError` vira `CpfDuplicadoError` |
 | CPF válido | Dígitos verificadores conferidos no schema; valor guardado só com dígitos |

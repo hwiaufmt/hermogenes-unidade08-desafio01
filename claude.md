@@ -100,7 +100,7 @@ Premissas de stack acima podem ser trocadas; confirme antes de mudar.
 | Operação | Endpoint | Descrição |
 |---|---|---|
 | Listar categorias | `GET /categorias` | usado nos formulários e filtros |
-| Criar categoria | `POST /categorias` | `nome` obrigatório e único; vazio ou duplicado → `422` |
+| Criar categoria | `POST /categorias` | `nome` obrigatório e único **sem diferenciar maiúsculas de minúsculas** ("Escrita" = "escrita"); vazio ou duplicado → `422` |
 | Cadastrar material | `POST /materiais` | exige categoria válida |
 | Registrar entrada | `POST /materiais/{id}/entrada` | soma ao saldo |
 | Registrar saída | `POST /materiais/{id}/saida` | subtrai do saldo, com bloqueio |
@@ -155,7 +155,7 @@ Códigos de erro: `401` sem login; `403` perfil sem permissão; `404` material/c
 - **CA-08 Permissões por perfil:** cada perfil só faz o que a matriz da seção 4 permite, **na API e nas telas**. Sem login → `401` (páginas: redireciona ao login); sem permissão → `403`. Estoquista cadastra e informa valores de estoque; operador só movimenta e pesquisa; administrador só mantém usuários.
 
 ### Categorias e consulta de saldo (Sprints 5 e 6 — planejados)
-- **CA-09 Edição de categoria:** o estoquista pode alterar o nome de uma categoria. Nome vazio ou já usado por outra categoria → `422`, sem gravar; categoria inexistente → `404`; outros perfis → `403`.
+- **CA-09 Edição de categoria:** o estoquista pode alterar o nome de uma categoria. Nome vazio ou já usado por outra categoria (**sem diferenciar maiúsculas de minúsculas**) → `422`, sem gravar; categoria inexistente → `404`; outros perfis → `403`.
 - **CA-10 Aviso de impacto:** antes de alterar uma categoria que tem materiais, o sistema informa **quantos registros serão afetados** e só grava com confirmação. Sem confirmação, o servidor responde `409` com a quantidade e **nada é gravado**. Categoria sem materiais grava direto.
 - **CA-11 Consulta de saldo:** a visão **Saldos** mostra, por categoria, o total de materiais, o total de unidades e quantos estão indisponíveis, e o saldo atual de cada material, sempre coerente com as entradas e saídas já registradas.
 
@@ -174,6 +174,7 @@ Códigos de erro: `401` sem login; `403` perfil sem permissão; `404` material/c
 11. A sessão (cookie assinado, `HttpOnly`, `SameSite=Lax`, 8 h) **relê o usuário no banco a cada requisição**: inativar um usuário ou mudar o perfil dele vale na próxima chamada.
 12. Usuários não são apagados, apenas inativados. O **último administrador ativo** não pode ser inativado nem rebaixado.
 13. O CPF de um usuário não pode ser alterado depois de cadastrado.
+14. O nome da categoria é único **sem diferenciar maiúsculas de minúsculas** ("Escrita" é igual a "escrita"), na criação, na edição e no seed. A comparação é feita no service com `casefold` (o `lower()` do SQLite só trata ASCII); **acentos diferenciam** ("Informatica" ≠ "Informática"). Na mensagem de erro aparece o nome já existente. O índice único do banco continua diferenciando maiúsculas (não há migração) e serve só de rede de segurança.
 
 ## 7. Plano em sprints (1 a 4 concluídas; 5 a 7 planejadas)
 
@@ -212,7 +213,7 @@ Códigos de erro: `401` sem login; `403` perfil sem permissão; `404` material/c
 
 ### Sprint 5 — Edição de categoria com aviso de impacto (planejada; pedido explícito, amplia o escopo)
 Hoje a categoria só pode ser criada. Passa a poder ser editada, e **antes de gravar o sistema informa quantos registros serão afetados**.
-1. **Service e API:** nova ação `EDITAR_CATEGORIA` na matriz (concedida ao **estoquista**); `PUT /categorias/{id}` altera o **nome** (único; vazio ou repetido → `422`; categoria inexistente → `404`). Se a categoria tem materiais, o servidor **exige confirmação**: sem ela responde `409` informando a quantidade de materiais afetados; com a confirmação, grava. Sem materiais, grava direto. A lista de categorias passa a informar quantos materiais cada uma tem.
+1. **Service e API:** nova ação `EDITAR_CATEGORIA` na matriz (concedida ao **estoquista**); `PUT /categorias/{id}` altera o **nome** (único sem diferenciar maiúsculas; vazio ou repetido → `422`; categoria inexistente → `404`). Se a categoria tem materiais, o servidor **exige confirmação**: sem ela responde `409` informando a quantidade de materiais afetados; com a confirmação, grava. Sem materiais, grava direto. A lista de categorias passa a informar quantos materiais cada uma tem.
 2. **Tela:** na página Cadastro, lista de categorias com botão "Editar" e janela de confirmação acessível (`<dialog>`) que mostra "esta mudança afetará N registros" antes de gravar.
 3. **Fechamento:** testes CA-09 e CA-10, documentação (README, `docs/`) e este arquivo.
 - Regra do aviso vale **só para a edição de categoria** (decidido); não muda o banco (o material liga à categoria pelo id), logo não há migração.
@@ -326,6 +327,7 @@ O cookie de sessão não tem a flag `Secure` (funciona em `http://localhost`). A
 - [x] Manter SQLite no MVP ou usar outro banco? → **SQLite**
 - [x] Exibir indicador de "estoque baixo" usando `estoque_minimo`? → **Não, fora do MVP**
 - [x] Categorias poderão ser criadas pela interface ou só via seed? → **Pela interface**, além do seed. **Editar o nome** entra na Sprint 5; **excluir** continua fora do escopo
+- [x] Nome de categoria diferencia maiúsculas de minúsculas? → **Não**: "Escrita" é igual a "escrita" (criação e edição); acentos continuam diferenciando
 - [x] A regra "informar antes de alterar quantos registros serão afetados" vale para qual edição? → **Só a edição de categoria** (Sprint 5)
 - [x] Quem edita categorias? → **Só o estoquista** (nova ação `EDITAR_CATEGORIA`)
 - [x] O que é a "visão de consulta de saldo"? → **Resumo por categoria + saldo por material** (Sprint 6); saldo em data passada e extrato de movimentações ficam de fora

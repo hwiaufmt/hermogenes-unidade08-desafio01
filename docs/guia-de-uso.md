@@ -77,7 +77,7 @@ Clique em **Cadastrar material**. Uma mensagem confirma o cadastro, ou explica o
 
 ### Nova categoria
 
-Se a categoria que você precisa não existe, digite o nome em **Nova categoria** e clique em **Criar categoria**. Ela aparece na lista de categorias do formulário de material, já selecionada. Nomes repetidos são recusados. As categorias iniciais são Papelaria, Escrita e Informática.
+Se a categoria que você precisa não existe, digite o nome em **Nova categoria** e clique em **Criar categoria**. Ela aparece na lista de categorias do formulário de material, já selecionada. Nomes repetidos são recusados **sem diferenciar maiúsculas de minúsculas**: se já existe "Escrita", não dá para criar "escrita" nem "ESCRITA". As categorias iniciais são Papelaria, Escrita e Informática.
 
 > Editar ou excluir categorias e materiais não faz parte do MVP. Os valores de estoque (inicial e mínimo) são informados no cadastro.
 
@@ -120,7 +120,7 @@ Os erros aparecem em uma faixa no topo da tela, em português. As mais comuns:
 | O campo 'quantidade' deve ser um número inteiro. | usar um número inteiro, sem vírgula |
 | A quantidade deve ser um número inteiro maior que zero. | usar 1 ou mais |
 | Saldo insuficiente de '...': disponível N, solicitado M. | pedir no máximo o saldo disponível, ou registrar uma entrada antes |
-| Já existe uma categoria chamada '...'. | usar a categoria existente |
+| Já existe uma categoria chamada '...'. | usar a categoria existente (a mensagem mostra o nome já cadastrado, mesmo que você tenha digitado em outra caixa) |
 | CPF inválido. | conferir os 11 dígitos |
 | Já existe um usuário com o CPF .... | o usuário já está cadastrado (talvez inativo; reative-o) |
 | A senha deve ter pelo menos 6 caracteres. | escolher uma senha maior (ou deixar em branco para usar a padrão) |

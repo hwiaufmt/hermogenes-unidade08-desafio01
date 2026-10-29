@@ -101,11 +101,9 @@ def atualizar_categoria(
     total = _contar_materiais_da_categoria(db, categoria_id)
     if nome == categoria.nome:
         return ResumoCategoria(categoria.id, categoria.nome, total)
-    repetida = db.scalar(
-        select(Categoria.id).where(Categoria.nome == nome, Categoria.id != categoria_id)
-    )
+    repetida = _categoria_com_nome(db, nome, ignorar_id=categoria_id)
     if repetida is not None:
-        raise CategoriaDuplicadaError(nome)
+        raise CategoriaDuplicadaError(repetida.nome)
     if total > 0 and not confirmar:
         raise ConfirmacaoNecessariaError(total)
     categoria.nome = nome
@@ -117,7 +115,23 @@ def atualizar_categoria(
     return ResumoCategoria(categoria.id, categoria.nome, total)
 
 
+def _categoria_com_nome(
+    db: Session, nome: str, ignorar_id: int | None = None
+) -> Categoria | None:
+    """Categoria com este nome, **sem diferenciar maiúsculas de minúsculas**
+    ("Escrita" é igual a "escrita"). A comparação é feita aqui, com `casefold`,
+    porque o `lower()` do SQLite só trata letras ASCII."""
+    alvo = nome.casefold()
+    for categoria in listar_categorias(db):
+        if categoria.id != ignorar_id and categoria.nome.casefold() == alvo:
+            return categoria
+    return None
+
+
 def criar_categoria(db: Session, nome: str) -> Categoria:
+    existente = _categoria_com_nome(db, nome)
+    if existente is not None:
+        raise CategoriaDuplicadaError(existente.nome)
     categoria = Categoria(nome=nome)
     db.add(categoria)
     try:
@@ -243,8 +257,8 @@ def registrar_saida(db: Session, material_id: int, quantidade: int) -> Material:
 
 
 def semear_categorias(db: Session) -> None:
-    existentes = {c.nome for c in listar_categorias(db)}
+    existentes = {c.nome.casefold() for c in listar_categorias(db)}
     for nome in CATEGORIAS_INICIAIS:
-        if nome not in existentes:
+        if nome.casefold() not in existentes:
             db.add(Categoria(nome=nome))
     db.commit()

@@ -141,13 +141,13 @@ Cria uma categoria.
 { "nome": "Limpeza" }
 ```
 
-O nome é aparado (espaços nas pontas são removidos). Deve ser único.
+O nome é aparado (espaços nas pontas são removidos). Deve ser único **sem diferenciar maiúsculas de minúsculas**: "Escrita" e "escrita" são o mesmo nome. Acentos diferenciam ("Informatica" não é "Informática").
 
 | Resposta | Descrição |
 |---|---|
 | `201` | a categoria criada |
 | `422` | `"O nome da categoria é obrigatório."` (vazio ou só espaços) |
-| `422` | `"Já existe uma categoria chamada 'Limpeza'."` |
+| `422` | `"Já existe uma categoria chamada 'Limpeza'."` (mesmo que você tenha digitado `limpeza`; a mensagem mostra o nome que já existe) |
 
 ---
 
