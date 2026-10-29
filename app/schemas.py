@@ -142,6 +142,40 @@ class UsuarioSaida(BaseModel):
     ativo: bool
 
 
+class MaterialDoSaldo(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    nome: str
+    quantidade: int
+    estoque_minimo: int
+
+    @computed_field
+    @property
+    def status(self) -> str:
+        return calcular_status(self.quantidade)
+
+
+class TotaisDeSaldoSaida(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    total_materiais: int
+    total_unidades: int
+    total_indisponiveis: int
+
+
+class SaldoDaCategoriaSaida(TotaisDeSaldoSaida):
+    categoria: CategoriaSaida
+    materiais: list[MaterialDoSaldo]
+
+
+class ConsultaDeSaldosSaida(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    categorias: list[SaldoDaCategoriaSaida]
+    totais: TotaisDeSaldoSaida
+
+
 class MovimentacaoCriar(BaseModel):
     quantidade: StrictInt
 

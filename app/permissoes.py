@@ -10,7 +10,8 @@ Cada `Acao` abaixo corresponde a um conjunto de rotas e telas:
 - CADASTRAR_MATERIAL: POST /materiais (inclui estoque inicial e mínimo);
   tela Cadastro.
 - MOVIMENTAR: POST /materiais/{id}/entrada e /saida; tela Movimentar.
-- CONSULTAR_ESTOQUE: GET /materiais e GET /materiais/{id}; tela Pesquisa.
+- CONSULTAR_ESTOQUE: GET /materiais, GET /materiais/{id} e GET /saldos;
+  telas Pesquisa e Saldos.
 
 Leituras que servem de apoio a outras telas aceitam "qualquer uma de" várias
 ações: GET /categorias é liberado a quem consulta, cadastra material, cria ou

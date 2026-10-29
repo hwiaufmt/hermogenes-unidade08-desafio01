@@ -41,6 +41,7 @@ ROTAS = [
     ("PUT", "/categorias/1", {"nome": "Outro nome"}, {ESTOQUISTA}),
     ("GET", "/materiais", None, {ESTOQUISTA, OPERADOR}),
     ("GET", "/materiais/1", None, {ESTOQUISTA, OPERADOR}),
+    ("GET", "/saldos", None, {ESTOQUISTA, OPERADOR}),
     ("POST", "/materiais", NOVO_MATERIAL, {ESTOQUISTA}),
     ("POST", "/materiais/1/entrada", {"quantidade": 1}, {OPERADOR}),
     ("POST", "/materiais/1/saida", {"quantidade": 1}, {OPERADOR}),

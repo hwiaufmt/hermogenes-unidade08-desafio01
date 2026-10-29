@@ -26,6 +26,7 @@ from app.routers import (
     materiais,
     movimentacoes,
     paginas,
+    saldos,
     usuarios,
 )
 from app.routers.paginas import (
@@ -78,6 +79,7 @@ app.include_router(autenticacao.router)
 app.include_router(categorias.router)
 app.include_router(materiais.router)
 app.include_router(movimentacoes.router)
+app.include_router(saldos.router)
 app.include_router(usuarios.router)
 app.include_router(paginas.router)
 

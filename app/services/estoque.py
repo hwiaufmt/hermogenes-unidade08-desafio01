@@ -79,6 +79,63 @@ def listar_categorias_com_totais(db: Session) -> list[ResumoCategoria]:
     return [ResumoCategoria(*linha) for linha in db.execute(consulta)]
 
 
+class SaldoDaCategoria(NamedTuple):
+    categoria: Categoria
+    materiais: list[Material]
+    total_materiais: int
+    total_unidades: int
+    total_indisponiveis: int
+
+
+class TotaisDeSaldo(NamedTuple):
+    total_materiais: int
+    total_unidades: int
+    total_indisponiveis: int
+
+
+class ConsultaDeSaldos(NamedTuple):
+    categorias: list[SaldoDaCategoria]
+    totais: TotaisDeSaldo
+
+
+def _saldo_da_categoria(
+    categoria: Categoria, materiais: list[Material]
+) -> SaldoDaCategoria:
+    indisponiveis = sum(
+        1 for m in materiais if calcular_status(m.quantidade) == STATUS_INDISPONIVEL
+    )
+    unidades = sum(m.quantidade for m in materiais)
+    return SaldoDaCategoria(
+        categoria, materiais, len(materiais), unidades, indisponiveis
+    )
+
+
+def consultar_saldos(db: Session) -> ConsultaDeSaldos:
+    """Saldos agrupados por categoria, com totais por categoria e geral.
+
+    Inclui as categorias sem materiais (com zeros). Categorias e materiais saem
+    em ordem alfabética, sem diferenciar maiúsculas de minúsculas.
+    """
+    categorias = sorted(listar_categorias(db), key=lambda c: c.nome.casefold())
+    por_categoria: dict[int, list[Material]] = {c.id: [] for c in categorias}
+    for material in db.scalars(select(Material)):
+        if material.categoria_id in por_categoria:
+            por_categoria[material.categoria_id].append(material)
+    saldos = [
+        _saldo_da_categoria(
+            categoria,
+            sorted(por_categoria[categoria.id], key=lambda m: m.nome.casefold()),
+        )
+        for categoria in categorias
+    ]
+    totais = TotaisDeSaldo(
+        total_materiais=sum(s.total_materiais for s in saldos),
+        total_unidades=sum(s.total_unidades for s in saldos),
+        total_indisponiveis=sum(s.total_indisponiveis for s in saldos),
+    )
+    return ConsultaDeSaldos(saldos, totais)
+
+
 def _contar_materiais_da_categoria(db: Session, categoria_id: int) -> int:
     consulta = select(func.count(Material.id)).where(
         Material.categoria_id == categoria_id
