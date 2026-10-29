@@ -30,11 +30,19 @@ class CategoriaCriar(BaseModel):
         return valor
 
 
+class CategoriaAtualizar(CategoriaCriar):
+    confirmar: bool = False
+
+
 class CategoriaSaida(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
     nome: str
+
+
+class CategoriaComTotal(CategoriaSaida):
+    total_materiais: int
 
 
 class MaterialCriar(BaseModel):

@@ -38,6 +38,7 @@ EDICAO_USUARIO = {"nome": "Editado", "email": "e@exemplo.com", "perfil": "operad
 ROTAS = [
     ("GET", "/categorias", None, {ESTOQUISTA, OPERADOR}),
     ("POST", "/categorias", {"nome": "Limpeza"}, {ESTOQUISTA}),
+    ("PUT", "/categorias/1", {"nome": "Outro nome"}, {ESTOQUISTA}),
     ("GET", "/materiais", None, {ESTOQUISTA, OPERADOR}),
     ("GET", "/materiais/1", None, {ESTOQUISTA, OPERADOR}),
     ("POST", "/materiais", NOVO_MATERIAL, {ESTOQUISTA}),
@@ -66,6 +67,7 @@ def test_ca08_matriz_oficial_segue_as_regras_de_negocio() -> None:
         ADMIN: {Acao.GERIR_USUARIOS},
         ESTOQUISTA: {
             Acao.CRIAR_CATEGORIA,
+            Acao.EDITAR_CATEGORIA,
             Acao.CADASTRAR_MATERIAL,
             Acao.CONSULTAR_ESTOQUE,
         },

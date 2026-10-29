@@ -1,3 +1,5 @@
+from typing import NamedTuple
+
 from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
@@ -39,8 +41,80 @@ class CategoriaDuplicadaError(Exception):
         super().__init__(f"Já existe uma categoria chamada '{nome}'.")
 
 
+class ConfirmacaoNecessariaError(Exception):
+    """A alteração afeta registros existentes e ainda não foi confirmada."""
+
+    def __init__(self, afetados: int) -> None:
+        self.afetados = afetados
+        materiais = _plural(afetados, "material", "materiais")
+        registros = _plural(afetados, "registro", "registros")
+        super().__init__(
+            f"Esta categoria tem {afetados} {materiais}; "
+            f"a mudança de nome afetará {afetados} {registros}. "
+            "Confirme para gravar."
+        )
+
+
+class ResumoCategoria(NamedTuple):
+    id: int
+    nome: str
+    total_materiais: int
+
+
+def _plural(quantidade: int, singular: str, plural: str) -> str:
+    return singular if quantidade == 1 else plural
+
+
 def listar_categorias(db: Session) -> list[Categoria]:
     return list(db.scalars(select(Categoria).order_by(Categoria.nome)))
+
+
+def listar_categorias_com_totais(db: Session) -> list[ResumoCategoria]:
+    consulta = (
+        select(Categoria.id, Categoria.nome, func.count(Material.id))
+        .outerjoin(Material, Material.categoria_id == Categoria.id)
+        .group_by(Categoria.id, Categoria.nome)
+        .order_by(Categoria.nome)
+    )
+    return [ResumoCategoria(*linha) for linha in db.execute(consulta)]
+
+
+def _contar_materiais_da_categoria(db: Session, categoria_id: int) -> int:
+    consulta = select(func.count(Material.id)).where(
+        Material.categoria_id == categoria_id
+    )
+    return db.scalar(consulta) or 0
+
+
+def atualizar_categoria(
+    db: Session, categoria_id: int, nome: str, confirmar: bool = False
+) -> ResumoCategoria:
+    """Altera o nome da categoria.
+
+    Se a categoria tem materiais, a alteração só é gravada com `confirmar`; sem
+    ela, informa quantos registros seriam afetados (CA-10). Nome repetido é
+    recusado antes de pedir a confirmação.
+    """
+    categoria = db.get(Categoria, categoria_id)
+    if categoria is None:
+        raise CategoriaInexistenteError(categoria_id)
+    total = _contar_materiais_da_categoria(db, categoria_id)
+    if nome == categoria.nome:
+        return ResumoCategoria(categoria.id, categoria.nome, total)
+    repetida = db.scalar(
+        select(Categoria.id).where(Categoria.nome == nome, Categoria.id != categoria_id)
+    )
+    if repetida is not None:
+        raise CategoriaDuplicadaError(nome)
+    if total > 0 and not confirmar:
+        raise ConfirmacaoNecessariaError(total)
+    categoria.nome = nome
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise CategoriaDuplicadaError(nome) from None
+    return ResumoCategoria(categoria.id, categoria.nome, total)
 
 
 def criar_categoria(db: Session, nome: str) -> Categoria:
