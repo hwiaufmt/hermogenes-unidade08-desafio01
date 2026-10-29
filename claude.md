@@ -54,18 +54,20 @@ Premissas de stack acima podem ser trocadas; confirme antes de mudar.
 │   │   ├── categorias.py
 │   │   ├── materiais.py
 │   │   ├── movimentacoes.py
+│   │   ├── saldos.py        # GET /saldos
 │   │   ├── usuarios.py
 │   │   └── paginas.py       # telas HTML, menu por perfil, guarda de páginas
-│   ├── templates/           # base, login, acesso_negado, pesquisa, movimentar,
-│   │                        # cadastro, usuarios
+│   ├── templates/           # base, login, acesso_negado, pesquisa, saldos,
+│   │                        # movimentar, cadastro, usuarios
 │   └── static/
 │       ├── css/styles.css
-│       └── js/              # api, login, sair, pesquisa, movimentar, cadastro, usuarios
+│       └── js/              # api, tabelas, login, sair, pesquisa, saldos, movimentar,
+│                            # cadastro, usuarios
 └── tests/
     ├── conftest.py          # fixtures: cliente_anonimo, entrar_como, client
     ├── test_cadastro.py, test_categorias.py, test_entrada.py, test_saida.py
     ├── test_edicao_categoria.py, test_categoria_nome_sem_case.py
-    ├── test_estoque.py, test_pesquisa.py, test_fluxo_completo.py, test_erros.py
+    ├── test_estoque.py, test_pesquisa.py, test_saldos.py, test_fluxo_completo.py, test_erros.py
     ├── test_usuarios.py, test_login.py, test_administrador_inicial.py
     └── test_permissoes.py, test_acesso_rotas.py, test_paginas.py
 ```
@@ -107,6 +109,7 @@ Premissas de stack acima podem ser trocadas; confirme antes de mudar.
 | Registrar entrada | `POST /materiais/{id}/entrada` | soma ao saldo |
 | Registrar saída | `POST /materiais/{id}/saida` | subtrai do saldo, com bloqueio |
 | Consultar saldo | `GET /materiais` e `GET /materiais/{id}` | filtros `?categoria_id=`, `?q=` (parte do nome) e `?status=` (`Disponível`/`Indisponível`) |
+| Consultar saldos | `GET /saldos` | por categoria: `total_materiais`, `total_unidades` e `total_indisponiveis`, com o saldo e o status de cada material; `totais` traz o total geral. Categorias sem materiais aparecem com zeros |
 | Entrar / sair / quem sou | `POST /login`, `POST /logout`, `GET /me` | login por CPF + senha; sessão em cookie |
 | Manter usuários | `GET/POST /usuarios`, `GET/PUT /usuarios/{id}`, `POST /usuarios/{id}/inativar` e `/reativar` | CPF único; só o administrador |
 
@@ -115,12 +118,13 @@ Páginas web (todas exigem login, exceto `/login`):
 | Página | Rota | Quem acessa |
 |---|---|---|
 | Pesquisa (estoque agrupado por categoria, com busca e filtros) | `/pesquisa` | estoquista, operador |
+| Saldos (total geral, resumo por categoria e saldo por material) | `/estoque/saldos` | estoquista, operador |
 | Movimentar | `/movimentar` | operador |
 | Cadastro (material, "Nova categoria" e lista de categorias com edição e confirmação) | `/materiais/novo` | estoquista |
 | Usuários | `/gestao/usuarios` | administrador |
 | Login | `/login` | público |
 
-`/` redireciona cada perfil à sua primeira tela. A página de usuários fica em `/gestao/usuarios` porque `/usuarios` é a API.
+`/` redireciona cada perfil à sua primeira tela. A página de usuários fica em `/gestao/usuarios` e a de saldos em `/estoque/saldos` porque `/usuarios` e `/saldos` são a API (a primeira rota registrada responderia JSON ao navegador).
 
 **Permissões** (matriz em `app/permissoes.py`):
 
@@ -129,7 +133,7 @@ Páginas web (todas exigem login, exceto `/login`):
 | Criar categoria | ✅ | | |
 | Editar categoria (com aviso de impacto) | ✅ | | |
 | Cadastrar material (estoque inicial e mínimo) | ✅ | | |
-| Consultar / pesquisar estoque | ✅ | ✅ | |
+| Consultar / pesquisar estoque e saldos | ✅ | ✅ | |
 | Movimentar (entrada e saída) | | ✅ | |
 | Manter usuários | | | ✅ |
 
@@ -157,10 +161,10 @@ Códigos de erro: `401` sem login; `403` perfil sem permissão; `404` material/c
 - **CA-07 CPF único:** não é permitido duplicar usuários; o campo único é o **CPF**. CPF repetido (mesmo com máscara diferente, mesmo de usuário inativo) → rejeitar com `409` e não gravar nada. O CPF precisa ter dígitos verificadores válidos.
 - **CA-08 Permissões por perfil:** cada perfil só faz o que a matriz da seção 4 permite, **na API e nas telas**. Sem login → `401` (páginas: redireciona ao login); sem permissão → `403`. Estoquista cadastra e informa valores de estoque; operador só movimenta e pesquisa; administrador só mantém usuários.
 
-### Categorias e consulta de saldo (CA-09 e CA-10: Sprint 5, concluída; CA-11: Sprint 6, planejado)
+### Categorias e consulta de saldo (CA-09 e CA-10: Sprint 5; CA-11: Sprint 6; ambas concluídas)
 - **CA-09 Edição de categoria:** o estoquista pode alterar o nome de uma categoria. Nome vazio ou já usado por outra categoria (**sem diferenciar maiúsculas de minúsculas**) → `422`, sem gravar; categoria inexistente → `404`; outros perfis → `403`.
 - **CA-10 Aviso de impacto:** antes de alterar uma categoria que tem materiais, o sistema informa **quantos registros serão afetados** e só grava com confirmação. Sem confirmação (`confirmar: true`), o servidor responde `409` com a quantidade (`afetados`) e **nada é gravado**. Categoria sem materiais grava direto. Nome repetido é recusado antes de pedir a confirmação.
-- **CA-11 Consulta de saldo:** a visão **Saldos** mostra, por categoria, o total de materiais, o total de unidades e quantos estão indisponíveis, e o saldo atual de cada material, sempre coerente com as entradas e saídas já registradas.
+- **CA-11 Consulta de saldo:** a visão **Saldos** mostra, por categoria, o total de materiais, o total de unidades e quantos estão indisponíveis, e o saldo atual de cada material, sempre coerente com as entradas e saídas já registradas. Mostra também o **total geral** e inclui as categorias sem materiais (com zeros).
 
 ## 6. Regras de negócio e integridade
 
@@ -179,8 +183,9 @@ Códigos de erro: `401` sem login; `403` perfil sem permissão; `404` material/c
 13. O CPF de um usuário não pode ser alterado depois de cadastrado.
 14. O nome da categoria é único **sem diferenciar maiúsculas de minúsculas** ("Escrita" é igual a "escrita"), na criação, na edição e no seed. A comparação é feita no service com `casefold` (o `lower()` do SQLite só trata ASCII); **acentos diferenciam** ("Informatica" ≠ "Informática"). Na mensagem de erro aparece o nome já existente. O índice único do banco continua diferenciando maiúsculas (não há migração) e serve só de rede de segurança.
 15. Alterar o nome de uma categoria que tem materiais exige confirmação explícita do cliente (`confirmar: true`); sem ela o servidor informa quantos registros seriam afetados e não grava. A regra vale só para a edição de categoria.
+16. Na consulta de saldos, **todos os totais** (por categoria e geral) são calculados no service, nunca no JavaScript. A contagem de indisponíveis reusa `calcular_status`. Categorias e materiais saem em ordem alfabética sem diferenciar maiúsculas de minúsculas.
 
-## 7. Plano em sprints (1 a 5 concluídas; 6 e 7 planejadas)
+## 7. Plano em sprints (1 a 6 concluídas; 7 planejada)
 
 ### Sprint 1 — Fundação e cadastro
 - Setup do projeto (FastAPI, SQLAlchemy, pytest, ruff, estrutura de pastas)
@@ -224,13 +229,13 @@ Hoje a categoria só pode ser criada. Passa a poder ser editada, e **antes de gr
 - Durante a sprint o dono do projeto pediu que o nome da categoria **não diferencie maiúsculas de minúsculas** ("Escrita" = "escrita"), na criação, na edição e no seed (regra 14).
 - **Pronto quando:** renomear uma categoria sem materiais grava direto; com materiais, só grava depois de informar a quantidade afetada e receber a confirmação; o estoquista consegue pela tela e os demais perfis recebem `403`. **Verificado:** CA-09 e CA-10 passam (testes `test_ca09_*` e `test_ca10_*`) e a tela foi conferida no navegador em desktop e celular.
 
-### Sprint 6 — Consulta de saldo de materiais (planejada)
+### Sprint 6 — Consulta de saldo de materiais (concluída)
 Uma visão de leitura para **consultar saldos**: resumo por categoria e saldo por material (decidido). Usa só dados que já existem; sem migração.
-1. **Service e API:** `GET /saldos` devolve, por categoria, o total de materiais, o total de unidades e quantos estão indisponíveis, com o saldo e o status de cada material. Os totais são calculados no service, nunca no JavaScript. Permissão: `CONSULTAR_ESTOQUE`.
-2. **Tela:** página **Saldos** (item no menu de quem consulta), com o resumo por categoria e, abaixo, os saldos por material; "Indisponível" destacado como na Pesquisa.
+1. **Service e API:** `GET /saldos` devolve, por categoria, o total de materiais, o total de unidades e quantos estão indisponíveis, com o saldo e o status de cada material, mais o **total geral** (`totais`). Os totais são calculados no service, nunca no JavaScript. Categorias sem materiais aparecem com zeros. Permissão: `CONSULTAR_ESTOQUE`.
+2. **Tela:** página **Saldos** em `/estoque/saldos` (item no menu de quem consulta), com o total geral, o resumo por categoria e, abaixo, os saldos por material; "Indisponível" destacado como na Pesquisa; botão "Atualizar saldos".
 3. **Fechamento:** testes CA-11, documentação e este arquivo.
 - Fora desta sprint: saldo em data passada e extrato de movimentações (histórico em tela segue fora do escopo).
-- **Pronto quando:** a tela mostra os totais corretos por categoria e o saldo de cada material, acompanhando entradas e saídas, para estoquista e operador.
+- **Pronto quando:** a tela mostra os totais corretos por categoria e o saldo de cada material, acompanhando entradas e saídas, para estoquista e operador. **Verificado:** CA-11 passa (testes `test_ca11_*`) e a tela foi conferida no navegador em desktop e celular, com os números acompanhando uma saída.
 
 ### Sprint 7 — Documento de visão do produto (planejada)
 Documento de produto, não de código: `docs/visao-do-produto.md` (Markdown, decidido).
@@ -336,6 +341,8 @@ O cookie de sessão não tem a flag `Secure` (funciona em `http://localhost`). A
 - [x] A regra "informar antes de alterar quantos registros serão afetados" vale para qual edição? → **Só a edição de categoria** (Sprint 5)
 - [x] Quem edita categorias? → **Só o estoquista** (nova ação `EDITAR_CATEGORIA`)
 - [x] O que é a "visão de consulta de saldo"? → **Resumo por categoria + saldo por material** (Sprint 6); saldo em data passada e extrato de movimentações ficam de fora
+- [x] Em que rota fica a página de saldos? → **`/estoque/saldos`**, porque `/saldos` é a API
+- [x] A visão de saldos mostra categorias sem materiais? → **Sim, com zeros** (diferente da Pesquisa, que as oculta); o total geral também vem do servidor
 - [x] Formato do documento de visão do produto? → **Markdown em `docs/visao-do-produto.md`** (Sprint 7)
 - [x] Haverá login em versão futura (impacta registrar "quem retirou")? → ~~Ignorar no MVP~~ **Superado na Sprint 4**: login por CPF + senha
 - [x] Como o usuário se identifica? → **CPF + senha**

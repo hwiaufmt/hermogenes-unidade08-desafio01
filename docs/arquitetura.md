@@ -27,6 +27,7 @@ Navegador (HTML + JS)  ──fetch──►  routers  ──►  services  ─�
 - **`routers/categorias.py`**: `GET /categorias` (com `total_materiais`), `POST /categorias` e `PUT /categorias/{id}` (edição com confirmação).
 - **`routers/materiais.py`**: `GET /materiais` (com `categoria_id`, `q` e `status`), `GET /materiais/{id}` e `POST /materiais`.
 - **`routers/movimentacoes.py`**: `POST /materiais/{id}/entrada` e `.../saida`.
+- **`routers/saldos.py`**: `GET /saldos` (consulta de saldos), exige `consultar_estoque`.
 - **`routers/usuarios.py`**: `/usuarios` (listar, consultar, criar, atualizar, inativar e reativar).
 - **`routers/paginas.py`**: telas HTML, menu por perfil e guarda de páginas. Fora da documentação OpenAPI.
 - **`erros.py`**: tratador global de `RequestValidationError`. Devolve `422` com `detail` em texto, em português.
@@ -82,7 +83,7 @@ A matriz `PERMISSOES` em `app/permissoes.py` liga cada perfil a um conjunto de a
 | `criar_categoria` | ✅ | | |
 | `editar_categoria` | ✅ | | |
 | `cadastrar_material` | ✅ | | |
-| `consultar_estoque` | ✅ | ✅ | |
+| `consultar_estoque` (Pesquisa, Saldos) | ✅ | ✅ | |
 | `movimentar` | | ✅ | |
 | `gerir_usuarios` | | | ✅ |
 
@@ -96,7 +97,7 @@ Perfil ausente da matriz, ou com conjunto vazio, não pode nada (falha segura). 
 
 ### Páginas e rotas com o mesmo caminho
 
-A tela de usuários fica em `/gestao/usuarios` porque `/usuarios` é a API e responderia primeiro, devolvendo JSON ao navegador. Do mesmo modo, as rotas da API usam `{id:int}` para não capturar `/materiais/novo`.
+A tela de usuários fica em `/gestao/usuarios` e a de saldos em `/estoque/saldos`, porque `/usuarios` e `/saldos` são a API e responderiam primeiro, devolvendo JSON ao navegador. Do mesmo modo, as rotas da API usam `{id:int}` para não capturar `/materiais/novo`. Um teste confere que `/estoque/saldos` devolve HTML e `/saldos` devolve JSON.
 
 ## Fluxo de uma saída
 
@@ -115,6 +116,16 @@ A entrada segue o mesmo caminho, com `quantidade = quantidade + :n`.
 ## Busca de materiais
 
 `listar_materiais(db, categoria_id, busca, status)` monta uma consulta única: o filtro de categoria valida a existência da categoria; `busca` usa `lower(nome) LIKE` com escape de `%` e `_`; `status` vira `quantidade = 0` ou `quantidade > 0`. O JavaScript só envia os parâmetros e renderiza o resultado, agrupando por categoria para exibir.
+
+## Consulta de saldos
+
+`consultar_saldos(db)` devolve uma estrutura de `NamedTuple`s (`ConsultaDeSaldos` com `categorias` e `totais`), que os schemas `ConsultaDeSaldosSaida` serializam:
+
+1. Lê todas as categorias e as ordena por `nome.casefold()`; lê todos os materiais de uma vez e os distribui por `categoria_id`.
+2. Para cada categoria, `_saldo_da_categoria` calcula `total_materiais`, `total_unidades` (soma de `quantidade`) e `total_indisponiveis`, este último com `calcular_status(...) == "Indisponível"`, para a regra de status continuar em um só lugar.
+3. O **total geral** é a soma dos totais das categorias, calculada também no service. O JavaScript não soma nada.
+
+Categorias sem materiais entram com zeros e lista vazia. Não há tabela nova, e a consulta não grava nada.
 
 ## Decisões de integridade
 
@@ -156,6 +167,8 @@ Módulos ES, sem framework e sem variáveis globais:
 - **`api.js`**: `requisitar`, `enviarJson` (aceita o método, ex.: `PUT`), `mostrarMensagem` e a leitura de mensagens de erro da API. Os erros da API são lançados como `ErroDeApi`, que carrega o `status` e o corpo da resposta (a tela de categorias lê o `afetados` do `409`). Uma resposta `401` (fora do login) leva a `/login`, para o caso de a sessão cair com a página aberta.
 - **`login.js`** e **`sair.js`**: entrar e sair. Depois de entrar, `/` leva à primeira tela do perfil.
 - **`pesquisa.js`**: carrega categorias e materiais, envia busca, categoria e status à API (a busca por nome espera 250 ms depois da digitação), **agrupa por categoria para exibir** e mostra um resumo.
+- **`saldos.js`**: busca `GET /saldos` e renderiza o total geral, o resumo por categoria e o saldo por material (só categorias com material); o botão "Atualizar saldos" busca de novo. Não faz conta: mostra os números que vêm do servidor.
+- **`tabelas.js`**: funções de montar células, cabeçalhos e regiões rolagem-focáveis de tabela. Hoje só o `saldos.js` as usa; o `pesquisa.js` mantém suas próprias cópias.
 - **`movimentar.js`**: lista materiais, mostra o saldo vindo da API e registra a movimentação.
 - **`cadastro.js`**: cadastra material, cria categoria e **edita categoria**: lista as categorias com o total de materiais e abre dois `<dialog>` nativos, um de edição e outro de confirmação. O texto do aviso ("afetará N registros") vem pronto do `detail` do `409`; a tela não monta a frase nem calcula nada. "Voltar" reabre a edição com o nome digitado. O botão "Editar" só existe para quem tem a ação `editar_categoria`.
 - **`usuarios.js`**: lista, cadastra, edita (CPF travado, senha opcional), inativa e reativa usuários.
@@ -184,6 +197,7 @@ Fixtures principais:
 | `test_saida.py` | CA-03, CA-04 e saídas inválidas |
 | `test_estoque.py` | CA-05, CA-06 e registro das movimentações |
 | `test_pesquisa.py` | busca por nome, status e combinações de filtros |
+| `test_saldos.py` | CA-11: totais por categoria e geral, categorias vazias, status, coerência com entradas e saídas, ordem alfabética |
 | `test_erros.py` | mensagens de validação em português |
 | `test_fluxo_completo.py` | ciclo completo de ponta a ponta |
 | `test_usuarios.py` | CA-07 (CPF único), validações, CRUD, inativação, último administrador |

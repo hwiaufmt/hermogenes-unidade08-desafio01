@@ -69,7 +69,7 @@ O `cpf` vem só com dígitos. A senha e o hash **nunca** são devolvidos.
 | `criar_categoria` | ✅ | | |
 | `editar_categoria` | ✅ | | |
 | `cadastrar_material` | ✅ | | |
-| `consultar_estoque` | ✅ | ✅ | |
+| `consultar_estoque` (inclui `GET /saldos`) | ✅ | ✅ | |
 | `movimentar` | | ✅ | |
 | `gerir_usuarios` | | | ✅ |
 
@@ -248,6 +248,58 @@ Cadastra um material. Só grava se a categoria existir.
 | `422` | `"O nome do material é obrigatório."` |
 | `422` | `"O campo 'quantidade' deve ser maior ou igual a 0."` (ou `'estoque mínimo'`) |
 | `422` | `"O campo 'quantidade' deve ser um número inteiro."` |
+
+---
+
+## Saldos
+
+### `GET /saldos`
+
+**Permissão:** `consultar_estoque`.
+
+Devolve a consulta de saldos: os **totais por categoria**, o saldo de cada material e o **total geral**. Todos os números são calculados pelo servidor.
+
+**200**
+
+```json
+{
+  "categorias": [
+    {
+      "categoria": { "id": 2, "nome": "Escrita" },
+      "total_materiais": 2,
+      "total_unidades": 5,
+      "total_indisponiveis": 1,
+      "materiais": [
+        { "id": 3, "nome": "Caneta azul", "quantidade": 5, "estoque_minimo": 0, "status": "Disponível" },
+        { "id": 4, "nome": "Caneta preta", "quantidade": 0, "estoque_minimo": 0, "status": "Indisponível" }
+      ]
+    },
+    {
+      "categoria": { "id": 3, "nome": "Informática" },
+      "total_materiais": 0,
+      "total_unidades": 0,
+      "total_indisponiveis": 0,
+      "materiais": []
+    }
+  ],
+  "totais": { "total_materiais": 2, "total_unidades": 5, "total_indisponiveis": 1 }
+}
+```
+
+| Campo | Significado |
+|---|---|
+| `total_materiais` | quantos materiais a categoria tem |
+| `total_unidades` | soma dos saldos (`quantidade`) dos materiais da categoria |
+| `total_indisponiveis` | quantos materiais têm saldo 0 (status `"Indisponível"`) |
+| `totais` | a soma dos três números acima em **todas** as categorias |
+
+Regras:
+
+- **Todas as categorias aparecem**, inclusive as sem materiais, com zeros e `materiais` vazio. (A Pesquisa, ao contrário, só mostra categorias com material.)
+- Categorias e materiais vêm em **ordem alfabética sem diferenciar maiúsculas de minúsculas**.
+- Os números acompanham as entradas e saídas: cada chamada reflete o saldo atual.
+- Não há filtros nem paginação; para filtrar por nome, categoria ou status, use `GET /materiais`.
+- Respostas de erro: `401` sem login e `403` para quem não tem `consultar_estoque` (o administrador).
 
 ---
 

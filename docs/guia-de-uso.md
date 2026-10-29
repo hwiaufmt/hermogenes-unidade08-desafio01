@@ -8,8 +8,8 @@ Com o app rodando, abra <http://localhost:8000>. Você precisa **entrar com CPF 
 
 | Perfil | O que faz | Telas |
 |---|---|---|
-| **Estoquista** | cadastra materiais (com estoque inicial e mínimo), cria e edita categorias e consulta o estoque | Pesquisa, Cadastro |
-| **Operador** | registra entradas e saídas e pesquisa o estoque | Pesquisa, Movimentar |
+| **Estoquista** | cadastra materiais (com estoque inicial e mínimo), cria e edita categorias e consulta o estoque e os saldos | Pesquisa, Saldos, Cadastro |
+| **Operador** | registra entradas e saídas e consulta o estoque e os saldos | Pesquisa, Saldos, Movimentar |
 | **Administrador** | mantém os usuários (e só isso) | Usuários |
 
 Cada pessoa tem um único perfil. Se você tentar abrir uma tela que o seu perfil não permite, aparece "Acesso negado" com um link para a sua tela inicial.
@@ -34,7 +34,7 @@ Quem for cadastrado sem senha informada também fica com a senha padrão `123456
 1. **Administrador:** cadastra os usuários (estoquistas e operadores).
 2. **Estoquista:** cadastra categorias e materiais, informando estoque inicial e mínimo.
 3. **Operador:** registra entradas (reposição) e saídas (retiradas).
-4. **Estoquista e operador:** consultam os saldos na **Pesquisa**.
+4. **Estoquista e operador:** procuram materiais na **Pesquisa** e conferem os totais na tela **Saldos**.
 
 ## Tela Usuários (`/gestao/usuarios`, administrador)
 
@@ -118,6 +118,16 @@ Mostra os materiais **agrupados por categoria**, em ordem alfabética, com saldo
 Abaixo dos filtros, um resumo diz quantos materiais foram encontrados. Se nada atende aos filtros, aparece "Nenhum material encontrado com esses filtros."; se não há material cadastrado, "Nenhum material cadastrado.".
 
 Materiais **Indisponíveis** ficam destacados: linha com fundo avermelhado e selo "⚠ Indisponível". Os demais mostram "✓ Disponível". Em telas estreitas, a tabela rola na horizontal e pode ser percorrida pelo teclado.
+
+## Tela Saldos (`/estoque/saldos`, estoquista e operador)
+
+Mostra os **totais do estoque**, em três blocos. Não há filtros: para procurar um material, use a Pesquisa.
+
+1. **Total geral:** três cartões com quantos **materiais** existem, quantas **unidades** há em estoque (a soma dos saldos) e quantos materiais estão **indisponíveis** (saldo 0). O número de indisponíveis fica em vermelho quando é maior que zero.
+2. **Resumo por categoria:** uma linha por categoria, com materiais, unidades e indisponíveis. **Categorias sem material também aparecem**, com zeros (por exemplo, "Informática: 0, 0, 0").
+3. **Saldo por material:** um quadro por categoria que tem material, com cada material, seu saldo, o estoque mínimo e o status. Materiais **Indisponíveis** ficam destacados, como na Pesquisa.
+
+Os números são calculados pelo sistema e refletem as entradas e saídas já registradas, mas a tela **não se atualiza sozinha**: clique em **Atualizar saldos** (no alto da página) para buscar os valores mais recentes, por exemplo depois que alguém registrou uma saída. Em telas estreitas, as tabelas rolam na horizontal e podem ser percorridas pelo teclado.
 
 ## Mensagens de erro
 

@@ -11,6 +11,7 @@ Este é um **MVP** que valida o ciclo *cadastrar → entrada → saída → cons
 - **Entrada e saída:** a entrada soma ao saldo; a saída subtrai e é **bloqueada** se o saldo for insuficiente.
 - **Status automático:** saldo 0 → **Indisponível**; qualquer outro → **Disponível**. Não há campo editável.
 - **Pesquisa:** materiais e saldos agrupados por categoria, com busca por nome e filtros de categoria e status.
+- **Saldos:** visão de leitura com o **total geral**, o resumo por categoria (materiais, unidades e indisponíveis, inclusive categorias sem materiais) e o saldo de cada material, tudo calculado no servidor.
 - **Usuários:** nome, **CPF único** e e-mail; cadastrar, editar, inativar e reativar.
 - **Login e perfis:** entrada por CPF e senha; três perfis com permissões diferentes (tabela abaixo).
 - Cada entrada e saída grava uma movimentação (tipo, quantidade, saldo após, data UTC) na mesma transação do saldo.
@@ -22,7 +23,7 @@ Este é um **MVP** que valida o ciclo *cadastrar → entrada → saída → cons
 | Criar categoria | ✅ | | |
 | Editar categoria (com aviso de impacto) | ✅ | | |
 | Cadastrar material (estoque inicial e mínimo) | ✅ | | |
-| Pesquisar / consultar estoque | ✅ | ✅ | |
+| Pesquisar / consultar estoque e saldos | ✅ | ✅ | |
 | Movimentar (entrada e saída) | | ✅ | |
 | Manter usuários | | | ✅ |
 
@@ -92,6 +93,7 @@ Cada critério de aceite tem testes nomeados com o ID (`test_ca01_...` a `test_c
 | `/login` | **Entrar** com CPF e senha | público |
 | `/` | leva cada perfil à sua primeira tela | logado |
 | `/pesquisa` | **Pesquisa:** saldos agrupados por categoria, com busca e filtros | estoquista, operador |
+| `/estoque/saldos` | **Saldos:** total geral, resumo por categoria e saldo por material | estoquista, operador |
 | `/movimentar` | **Movimentar:** registrar entrada ou saída e ver o saldo | operador |
 | `/materiais/novo` | **Cadastro:** novo material, nova categoria e lista de categorias com edição | estoquista |
 | `/gestao/usuarios` | **Usuários:** cadastrar, editar, inativar e reativar | administrador |
@@ -110,6 +112,7 @@ Sem login, as páginas redirecionam para `/login`. Sem permissão, mostram "Aces
 | `PUT /categorias/{id}` | Altera o nome. Com materiais, exige `confirmar: true` | `404`, `422` vazio ou duplicado, `409` sem confirmação (informa `afetados`) |
 | `GET /materiais` | Lista materiais; filtros `?categoria_id=`, `?q=`, `?status=` | `404` categoria inexistente, `422` status inválido |
 | `GET /materiais/{id}` | Consulta um material | `404` |
+| `GET /saldos` | Totais por categoria e geral, com o saldo de cada material | `401`, `403` |
 | `POST /materiais` | Cadastra material | `422` categoria ausente/inválida, valores inválidos |
 | `POST /materiais/{id}/entrada` | Soma `quantidade` ao saldo | `404`, `422` |
 | `POST /materiais/{id}/saida` | Subtrai `quantidade` do saldo | `404`, `422`, `409` saldo insuficiente |
