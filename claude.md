@@ -185,7 +185,7 @@ Códigos de erro: `401` sem login; `403` perfil sem permissão; `404` material/c
 15. Alterar o nome de uma categoria que tem materiais exige confirmação explícita do cliente (`confirmar: true`); sem ela o servidor informa quantos registros seriam afetados e não grava. A regra vale só para a edição de categoria.
 16. Na consulta de saldos, **todos os totais** (por categoria e geral) são calculados no service, nunca no JavaScript. A contagem de indisponíveis reusa `calcular_status`. Categorias e materiais saem em ordem alfabética sem diferenciar maiúsculas de minúsculas.
 
-## 7. Plano em sprints (1 a 6 concluídas; 7 planejada)
+## 7. Plano em sprints (1 a 6 concluídas; 7 em andamento)
 
 ### Sprint 1 — Fundação e cadastro
 - Setup do projeto (FastAPI, SQLAlchemy, pytest, ruff, estrutura de pastas)
@@ -237,10 +237,11 @@ Uma visão de leitura para **consultar saldos**: resumo por categoria e saldo po
 - Fora desta sprint: saldo em data passada e extrato de movimentações (histórico em tela segue fora do escopo).
 - **Pronto quando:** a tela mostra os totais corretos por categoria e o saldo de cada material, acompanhando entradas e saídas, para estoquista e operador. **Verificado:** CA-11 passa (testes `test_ca11_*`) e a tela foi conferida no navegador em desktop e celular, com os números acompanhando uma saída.
 
-### Sprint 7 — Documento de visão do produto (planejada)
+### Sprint 7 — Documento de visão do produto (em andamento)
 Documento de produto, não de código: `docs/visao-do-produto.md` (Markdown, decidido).
-1. **Alinhar o sumário** a partir do que existe (este arquivo e `docs/`) e das respostas do dono do projeto.
-2. **Escrever o documento:** problema e oportunidade; usuários e perfis; objetivos e valor; escopo atual e fora do escopo; funcionalidades por sprint; métricas de sucesso; premissas, restrições e riscos (inclusive as simplificações de segurança do protótipo); próximos passos.
+1. **Alinhar o sumário** (**feito**, com o dono do projeto). Decisões: público = **equipe e donos do produto** (tom de produto, com detalhe de perfis, escopo, evolução e riscos); contexto = **genérico, um escritório** (sem organização, equipe nem números inventados; onde faltar dado, "a definir"); métricas = **propostas por mim, marcadas como hipóteses** (sem metas numéricas inventadas); **sem seção de "Próximos passos"** (o documento descreve o que existe hoje).
+   Sumário final: (1) Resumo; (2) Problema e oportunidade; (3) Usuários e perfis; (4) Objetivos e proposta de valor; (5) Escopo atual; (6) Fora do escopo; (7) Evolução do produto (as sprints em linguagem de produto); (8) Princípios do produto; (9) Métricas de sucesso (hipóteses); (10) Premissas, restrições e riscos (inclusive as simplificações de segurança do protótipo, como limitações do estado atual).
+2. **Escrever o documento** nesse sumário, em português, claro e direto (cerca de 4 a 6 páginas), separando o que o sistema **faz** do que **não faz**.
 3. **Revisar contra o sistema** (toda afirmação deve valer hoje), ligar o documento no README e em `docs/`.
 - **Pronto quando:** o documento está escrito, revisado e versionado, e nada nele contradiz o que o sistema faz.
 
@@ -344,6 +345,10 @@ O cookie de sessão não tem a flag `Secure` (funciona em `http://localhost`). A
 - [x] Em que rota fica a página de saldos? → **`/estoque/saldos`**, porque `/saldos` é a API
 - [x] A visão de saldos mostra categorias sem materiais? → **Sim, com zeros** (diferente da Pesquisa, que as oculta); o total geral também vem do servidor
 - [x] Formato do documento de visão do produto? → **Markdown em `docs/visao-do-produto.md`** (Sprint 7)
+- [x] Quem lê o documento de visão? → **Equipe e donos do produto**
+- [x] Que contexto o documento descreve? → **Genérico, um escritório** (sem organização específica)
+- [x] Métricas de sucesso do documento? → **Propostas como hipóteses**, sem metas numéricas inventadas
+- [x] O documento tem "Próximos passos"? → **Não**: descreve só o que existe hoje
 - [x] Haverá login em versão futura (impacta registrar "quem retirou")? → ~~Ignorar no MVP~~ **Superado na Sprint 4**: login por CPF + senha
 - [x] Como o usuário se identifica? → **CPF + senha**
 - [x] O estoquista também movimenta e pesquisa? → **Não**: só o descrito (cadastros, valores de estoque e consulta, ver matriz na seção 4)
