@@ -22,7 +22,7 @@ API REST em JSON. Com o app rodando, a documentação interativa (Swagger) fica 
 | `401` | sem login, sessão inválida/expirada, usuário inativo; ou CPF/senha errados no login |
 | `403` | logado, mas o perfil não tem a permissão da rota |
 | `404` | material, categoria ou usuário inexistente |
-| `409` | saldo insuficiente para a saída; CPF de usuário já cadastrado; inativar ou rebaixar o último administrador; alterar categoria com materiais sem confirmação (a resposta traz também `afetados`) |
+| `409` | saldo insuficiente para a saída; CPF de usuário já cadastrado; inativar ou rebaixar o último administrador; alterar categoria com materiais sem confirmação (a resposta traz também `afetados`); excluir material com saldo sem confirmação (a resposta traz também `saldo`) |
 | `422` | dado inválido: campo ausente, tipo errado, valor fora do limite, categoria inválida, nome duplicado, CPF/e-mail/perfil/senha inválidos, filtro de status inválido |
 
 ### Objetos
@@ -46,7 +46,9 @@ API REST em JSON. Com o app rodando, a documentação interativa (Swagger) fica 
 }
 ```
 
-`status` é calculado pelo servidor: `"Indisponível"` quando `quantidade` é 0, senão `"Disponível"`.
+`status` é calculado pelo servidor: `"Indisponível"` quando `quantidade` é 0, senão `"Disponível"`. As telas mostram essa informação como **Sim** (`"Disponível"`) ou **Não** (`"Indisponível"`); é só o rótulo na tela, e a API continua devolvendo `status`.
+
+Material excluído (exclusão lógica) não aparece em nenhuma rota de leitura nem de movimentação; consultá-lo ou movimentá-lo dá `404`.
 
 **Usuário**
 
@@ -70,6 +72,7 @@ O `cpf` vem só com dígitos. A senha e o hash **nunca** são devolvidos.
 | `criar_categoria` | ✅ | | |
 | `editar_categoria` | ✅ | | |
 | `cadastrar_material` | ✅ | | |
+| `excluir_material` | ✅ | | |
 | `consultar_estoque` (inclui `GET /saldos`) | ✅ | ✅ | |
 | `movimentar` | | ✅ | |
 | `gerir_usuarios` | | | ✅ |
@@ -250,6 +253,33 @@ Cadastra um material. Só grava se a categoria existir.
 | `422` | `"O campo 'quantidade' deve ser maior ou igual a 0."` (ou `'estoque mínimo'`) |
 | `422` | `"O campo 'quantidade' deve ser um número inteiro."` |
 
+### `DELETE /materiais/{id}`
+
+**Permissão:** `excluir_material`.
+
+Exclusão **lógica**: o material continua no banco com a data da exclusão (`excluido_em`) e as movimentações dele não são apagadas, mas ele deixa de aparecer em listagens, saldos, totais e movimentações. Não há rota para restaurar.
+
+| Parâmetro | Tipo | Descrição |
+|---|---|---|
+| `confirmar` | `true` ou `false`, opcional (padrão `false`) | obrigatório `true` quando o material tem saldo maior que zero |
+
+| Resposta | Descrição |
+|---|---|
+| `204` | excluído, sem corpo |
+| `404` | `"O material 99 não existe."` (inclui material já excluído) |
+| `409` | precisa de confirmação (ver abaixo); nada é gravado |
+
+**`409` de confirmação**
+
+```json
+{
+  "detail": "O material 'Resma A4' tem 10 unidade(s) em estoque; ao excluir, ele deixa de aparecer no sistema. Confirme para excluir.",
+  "saldo": 10
+}
+```
+
+Com saldo 0, a exclusão é feita direto. Para excluir material com saldo, repita a chamada com `?confirmar=true`.
+
 ---
 
 ## Saldos
@@ -298,7 +328,8 @@ Regras:
 
 - **Todas as categorias aparecem**, inclusive as sem materiais, com zeros e `materiais` vazio. (A Pesquisa, ao contrário, só mostra categorias com material.)
 - Categorias e materiais vêm em **ordem alfabética sem diferenciar maiúsculas de minúsculas**.
-- Os números acompanham as entradas e saídas: cada chamada reflete o saldo atual.
+- Os números acompanham as entradas e saídas: cada chamada reflete o saldo atual. Materiais excluídos não entram em nenhum número.
+- A tela Saldos usa só o total geral (`totais`) e as listas de `materiais`, na ordem recebida (categoria e depois nome); os totais por categoria seguem na API, mas a tela não os exibe.
 - Não há filtros nem paginação; para filtrar por nome, categoria ou status, use `GET /materiais`.
 - Respostas de erro: `401` sem login e `403` para quem não tem `consultar_estoque` (o administrador).
 

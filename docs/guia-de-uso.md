@@ -8,7 +8,7 @@ Com o app rodando, abra <http://localhost:8000>. Você precisa **entrar com CPF 
 
 | Perfil | O que faz | Telas |
 |---|---|---|
-| **Estoquista** | cadastra materiais (com estoque inicial e mínimo), cria e edita categorias e consulta o estoque e os saldos | Pesquisa, Saldos, Cadastro |
+| **Estoquista** | cadastra e exclui materiais (com estoque inicial e mínimo), cria e edita categorias e consulta o estoque e os saldos | Pesquisa, Saldos, Cadastro |
 | **Operador** | registra entradas e saídas e consulta o estoque e os saldos | Pesquisa, Saldos, Movimentar |
 | **Administrador** | mantém os usuários (e só isso) | Usuários |
 
@@ -70,7 +70,7 @@ O **último administrador ativo** não pode ser inativado nem ter o perfil troca
 |---|---|
 | Nome | obrigatório |
 | Categoria | obrigatória; escolha uma da lista |
-| Estoque inicial | inteiro a partir de 0 (padrão 0). Com 0, o material nasce **Indisponível** |
+| Estoque inicial | inteiro a partir de 0 (padrão 0). Com 0, o material nasce com **Disponível: Não** |
 | Estoque mínimo | inteiro a partir de 0 (padrão 0). É guardado e exibido, mas **não gera alerta** |
 
 Clique em **Cadastrar material**. Uma mensagem confirma o cadastro, ou explica o problema (por exemplo, "Selecione uma categoria.").
@@ -92,11 +92,11 @@ Mais abaixo na página, a seção **Categorias cadastradas** lista cada categori
 
 Se o novo nome já existir (em qualquer caixa, "papelaria" conta como "Papelaria"), o erro aparece na própria janela de edição e **nenhuma confirmação é pedida**. Trocar só maiúsculas e minúsculas do próprio nome ("Limpeza" para "LIMPEZA") é permitido e segue as mesmas regras acima.
 
-> Excluir categorias e editar ou excluir materiais não faz parte do MVP. Os valores de estoque (inicial e mínimo) são informados no cadastro.
+> Excluir categorias e editar materiais já cadastrados não faz parte do MVP (excluir material é feito na Pesquisa, abaixo). Os valores de estoque (inicial e mínimo) são informados no cadastro.
 
 ## Tela Movimentar (`/movimentar`, operador)
 
-1. Escolha o **Material**. O painel **Saldo atual** mostra o saldo e o status.
+1. Escolha o **Material**. O painel **Saldo atual** mostra o saldo e se o material está **Disponível** (Sim ou Não).
 2. Escolha o **Tipo**: **Entrada** (soma ao saldo) ou **Saída** (subtrai do saldo).
 3. Informe a **Quantidade**, um inteiro maior que zero.
 4. Clique em **Registrar**.
@@ -105,7 +105,7 @@ Depois do registro, a mensagem informa o novo saldo e o painel é atualizado.
 
 **Saída maior que o saldo é bloqueada.** O sistema mostra, por exemplo, "Saldo insuficiente de 'Caneta azul': disponível 5, solicitado 8.". O saldo não muda e nada é registrado.
 
-Quando o saldo chega a 0, o status passa a **Indisponível** automaticamente. Uma nova entrada o devolve a **Disponível**, sem ação manual.
+Quando o saldo chega a 0, o material passa a **Disponível: Não** automaticamente. Uma nova entrada o devolve a **Sim**, sem ação manual.
 
 ## Tela Pesquisa (`/pesquisa`, estoquista e operador)
 
@@ -113,21 +113,29 @@ Mostra os materiais **agrupados por categoria**, em ordem alfabética, com saldo
 
 - **Buscar por nome:** digite parte do nome; a lista se atualiza sozinha. Maiúsculas e minúsculas não importam (para letras acentuadas, prefira digitar como está cadastrado).
 - **Categoria:** "Todas as categorias" ou uma só.
-- **Status:** Todos, Disponível ou Indisponível.
+- **Disponível:** Todos, Sim ou Não.
 
 Abaixo dos filtros, um resumo diz quantos materiais foram encontrados. Se nada atende aos filtros, aparece "Nenhum material encontrado com esses filtros."; se não há material cadastrado, "Nenhum material cadastrado.".
 
-Materiais **Indisponíveis** ficam destacados: linha com fundo avermelhado e selo "⚠ Indisponível". Os demais mostram "✓ Disponível". Em telas estreitas, a tabela rola na horizontal e pode ser percorrida pelo teclado.
+Materiais sem saldo ficam destacados: linha com fundo avermelhado e selo "⚠ Não" na coluna **Disponível**. Os demais mostram "✓ Sim". Em telas estreitas, a tabela rola na horizontal e pode ser percorrida pelo teclado.
+
+### Excluir um material (estoquista)
+
+O estoquista vê, em cada linha, o botão **Excluir** (o operador não o vê).
+
+1. Clique em **Excluir**. Abre uma janela de confirmação; se o material tem saldo, ela diz quantas unidades há em estoque.
+2. Clique em **Excluir material** para confirmar, ou em **Cancelar** (o foco já começa em Cancelar) para desistir.
+
+A exclusão é **lógica**: o material some da Pesquisa, dos Saldos, da tela Movimentar e dos totais, mas o registro e as movimentações dele continuam guardados no banco. **Não há como restaurar pela tela.**
 
 ## Tela Saldos (`/estoque/saldos`, estoquista e operador)
 
-Mostra os **totais do estoque**, em três blocos. Não há filtros: para procurar um material, use a Pesquisa.
+Mostra o **total do estoque** e o saldo de cada material. Não há filtros: para procurar um material, use a Pesquisa.
 
 1. **Total geral:** três cartões com quantos **materiais** existem, quantas **unidades** há em estoque (a soma dos saldos) e quantos materiais estão **indisponíveis** (saldo 0). O número de indisponíveis fica em vermelho quando é maior que zero.
-2. **Resumo por categoria:** uma linha por categoria, com materiais, unidades e indisponíveis. **Categorias sem material também aparecem**, com zeros (por exemplo, "Informática: 0, 0, 0").
-3. **Saldo por material:** um quadro por categoria que tem material, com cada material, seu saldo, o estoque mínimo e o status. Materiais **Indisponíveis** ficam destacados, como na Pesquisa.
+2. **Saldo por material:** uma tabela com as colunas **Material**, **Quantidade**, **Categoria** e **Disponível** (**Sim** ou **Não**). Ela vem **agrupada por categoria, em ordem alfabética**, e os materiais também em ordem alfabética dentro de cada categoria. Materiais com **Não** ficam destacados, como na Pesquisa. Categorias sem material não aparecem aqui, e materiais excluídos também não.
 
-Os números são calculados pelo sistema e refletem as entradas e saídas já registradas, mas a tela **não se atualiza sozinha**: clique em **Atualizar saldos** (no alto da página) para buscar os valores mais recentes, por exemplo depois que alguém registrou uma saída. Em telas estreitas, as tabelas rolam na horizontal e podem ser percorridas pelo teclado.
+Os números são calculados pelo sistema e refletem as entradas e saídas já registradas, mas a tela **não se atualiza sozinha**: clique em **Atualizar saldos** (no alto da página) para buscar os valores mais recentes, por exemplo depois que alguém registrou uma saída. Em telas estreitas, a tabela rola na horizontal e pode ser percorrida pelo teclado.
 
 ## Mensagens de erro
 

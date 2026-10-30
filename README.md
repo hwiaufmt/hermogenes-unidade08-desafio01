@@ -9,9 +9,10 @@ Este é um **MVP** que valida o ciclo *cadastrar → entrada → saída → cons
 - **Categorias:** seed inicial (Papelaria, Escrita, Informática), criação de novas e **edição do nome** pela interface. O nome é único sem diferenciar maiúsculas de minúsculas ("Escrita" = "escrita"). Ao editar uma categoria que tem materiais, o sistema **informa quantos registros serão afetados** e só grava depois da confirmação.
 - **Cadastro de material:** exige categoria válida; estoque inicial e estoque mínimo opcionais (padrão 0).
 - **Entrada e saída:** a entrada soma ao saldo; a saída subtrai e é **bloqueada** se o saldo for insuficiente.
-- **Status automático:** saldo 0 → **Indisponível**; qualquer outro → **Disponível**. Não há campo editável.
-- **Pesquisa:** materiais e saldos agrupados por categoria, com busca por nome e filtros de categoria e status.
-- **Saldos:** visão de leitura com o **total geral**, o resumo por categoria (materiais, unidades e indisponíveis, inclusive categorias sem materiais) e o saldo de cada material, tudo calculado no servidor.
+- **Status automático:** saldo 0 → **Indisponível**; qualquer outro → **Disponível**. Não há campo editável. Nas telas, a disponibilidade aparece como **Sim** ou **Não** (a API continua devolvendo `status`).
+- **Exclusão lógica de material:** o estoquista exclui um material pela Pesquisa (com confirmação quando há saldo). Ele some de todas as telas e totais, mas o registro e as movimentações continuam no banco. Não há restauração pela interface.
+- **Pesquisa:** materiais e saldos agrupados por categoria, com busca por nome e filtros de categoria e disponibilidade (Sim/Não).
+- **Saldos:** visão de leitura com o **total geral** e uma tabela **Material | Quantidade | Categoria | Disponível**, agrupada por categoria em ordem alfabética, tudo calculado no servidor.
 - **Usuários:** nome, **CPF único** e e-mail; cadastrar, editar, inativar e reativar.
 - **Login e perfis:** entrada por CPF e senha; três perfis com permissões diferentes (tabela abaixo).
 - Cada entrada e saída grava uma movimentação (tipo, quantidade, saldo após, data UTC) na mesma transação do saldo.
@@ -23,6 +24,7 @@ Este é um **MVP** que valida o ciclo *cadastrar → entrada → saída → cons
 | Criar categoria | ✅ | | |
 | Editar categoria (com aviso de impacto) | ✅ | | |
 | Cadastrar material (estoque inicial e mínimo) | ✅ | | |
+| Excluir material (exclusão lógica) | ✅ | | |
 | Pesquisar / consultar estoque e saldos | ✅ | ✅ | |
 | Movimentar (entrada e saída) | | ✅ | |
 | Manter usuários | | | ✅ |
@@ -75,7 +77,7 @@ Abra <http://localhost:8000>, entre com esse CPF e senha e, na tela **Usuários*
 | `ESTOQUE_ADMIN_NOME`, `ESTOQUE_ADMIN_EMAIL` | opcionais (padrão: `Administrador`, `administrador@estoque.local`) |
 | `ESTOQUE_SECRET_KEY` | assina o cookie de sessão; sem ela, as sessões se perdem a cada reinício |
 
-A documentação interativa da API fica em `/docs`. O banco é o arquivo `estoque.db`, criado na raiz ao iniciar, junto com o seed das categorias. Não há migração de banco: ao atualizar o código, tabelas novas são criadas sozinhas, mas colunas novas em tabelas existentes exigem recriar o banco.
+A documentação interativa da API fica em `/docs`. O banco é o arquivo `estoque.db`, criado na raiz ao iniciar, junto com o seed das categorias. Ao atualizar o código, tabelas novas são criadas sozinhas e uma **migração leve** (`app/migracoes.py`) acrescenta ao iniciar as colunas novas que faltam (hoje, `materiais.excluido_em`), sem alterar dados. Copie o `estoque.db` antes de atualizar; mudanças além de acrescentar colunas exigem recriar o banco.
 
 ## Como testar
 
@@ -84,7 +86,7 @@ pytest                          # testes (usam SQLite em memória)
 ruff check . && ruff format .   # lint e formatação
 ```
 
-Cada critério de aceite tem testes nomeados com o ID (`test_ca01_...` a `test_ca08_...`). Os testes de acesso conferem, para cada perfil e cada rota, se o resultado é permitido ou `403`, usando a matriz real.
+Cada critério de aceite tem testes nomeados com o ID (`test_ca01_...` a `test_ca14_...`). Os testes de acesso conferem, para cada perfil e cada rota, se o resultado é permitido ou `403`, usando a matriz real.
 
 ## Páginas
 
@@ -92,8 +94,8 @@ Cada critério de aceite tem testes nomeados com o ID (`test_ca01_...` a `test_c
 |---|---|---|
 | `/login` | **Entrar** com CPF e senha | público |
 | `/` | leva cada perfil à sua primeira tela | logado |
-| `/pesquisa` | **Pesquisa:** saldos agrupados por categoria, com busca e filtros | estoquista, operador |
-| `/estoque/saldos` | **Saldos:** total geral, resumo por categoria e saldo por material | estoquista, operador |
+| `/pesquisa` | **Pesquisa:** saldos agrupados por categoria, com busca, filtros e botão Excluir (estoquista) | estoquista, operador |
+| `/estoque/saldos` | **Saldos:** total geral e tabela Material, Quantidade, Categoria e Disponível, agrupada por categoria | estoquista, operador |
 | `/movimentar` | **Movimentar:** registrar entrada ou saída e ver o saldo | operador |
 | `/materiais/novo` | **Cadastro:** novo material, nova categoria e lista de categorias com edição | estoquista |
 | `/gestao/usuarios` | **Usuários:** cadastrar, editar, inativar e reativar | administrador |
@@ -112,6 +114,7 @@ Sem login, as páginas redirecionam para `/login`. Sem permissão, mostram "Aces
 | `PUT /categorias/{id}` | Altera o nome. Com materiais, exige `confirmar: true` | `404`, `422` vazio ou duplicado, `409` sem confirmação (informa `afetados`) |
 | `GET /materiais` | Lista materiais; filtros `?categoria_id=`, `?q=`, `?status=` | `404` categoria inexistente, `422` status inválido |
 | `GET /materiais/{id}` | Consulta um material | `404` |
+| `DELETE /materiais/{id}?confirmar=true` | Exclusão lógica; com saldo maior que zero exige `confirmar=true` | `404`, `409` sem confirmação (informa `saldo`) |
 | `GET /saldos` | Totais por categoria e geral, com o saldo de cada material | `401`, `403` |
 | `POST /materiais` | Cadastra material | `422` categoria ausente/inválida, valores inválidos |
 | `POST /materiais/{id}/entrada` | Soma `quantidade` ao saldo | `404`, `422` |
@@ -130,6 +133,7 @@ Todas as rotas, exceto `POST /login`, exigem login (`401`) e a permissão do per
 - `estoque_minimo` é guardado e exibido; não dispara alerta no MVP.
 - O nome da categoria é único **sem diferenciar maiúsculas de minúsculas**; acentos diferenciam.
 - Alterar o nome de uma categoria com materiais exige confirmação: sem ela o servidor responde `409`, diz quantos registros seriam afetados e não grava.
+- Material excluído (exclusão lógica) não aparece em nenhuma consulta, total ou movimentação (`404`); as movimentações antigas ficam guardadas. Com saldo maior que zero, a exclusão exige confirmação.
 - O **CPF** é único (com dígitos verificadores válidos); CPF repetido, mesmo com máscara diferente, é recusado.
 - A senha tem pelo menos 6 caracteres (protótipo; a senha padrão é `123456`) e é guardada só como hash `scrypt`.
 - Usuários são **inativados**, não apagados. O último administrador ativo não pode ser inativado nem rebaixado.

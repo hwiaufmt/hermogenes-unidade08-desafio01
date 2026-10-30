@@ -41,6 +41,7 @@ Premissas de stack acima podem ser trocadas; confirme antes de mudar.
 │   ├── config.py            # chave da sessão, duração, variáveis do admin inicial
 │   ├── database.py          # engine, sessão, Base
 │   ├── models.py            # Categoria, Material, Movimentacao, Usuario
+│   ├── migracoes.py         # migração leve: só acrescenta colunas que faltam, ao iniciar
 │   ├── schemas.py           # modelos Pydantic
 │   ├── seguranca.py         # hash e verificação de senha (scrypt)
 │   ├── permissoes.py        # Acao e a matriz PERMISSOES (perfil -> ações)
@@ -67,6 +68,7 @@ Premissas de stack acima podem ser trocadas; confirme antes de mudar.
     ├── conftest.py          # fixtures: cliente_anonimo, entrar_como, client
     ├── test_cadastro.py, test_categorias.py, test_entrada.py, test_saida.py
     ├── test_edicao_categoria.py, test_categoria_nome_sem_case.py
+    ├── test_exclusao_material.py, test_migracoes.py
     ├── test_estoque.py, test_pesquisa.py, test_saldos.py, test_fluxo_completo.py, test_erros.py
     ├── test_usuarios.py, test_login.py, test_administrador_inicial.py
     └── test_permissoes.py, test_acesso_rotas.py, test_paginas.py
@@ -86,7 +88,8 @@ Premissas de stack acima podem ser trocadas; confirme antes de mudar.
 - `categoria_id` (FK obrigatória para Categoria)
 - `quantidade` (inteiro ≥ 0; é o **saldo atual**)
 - `estoque_minimo` (inteiro ≥ 0)
-- `status` — **derivado, não armazenado**: `"Indisponível"` se `quantidade == 0`, caso contrário `"Disponível"`
+- `excluido_em` — data e hora (UTC) da **exclusão lógica**; vazia = material ativo. Material excluído continua na tabela, mas some das telas e das consultas
+- `status` — **derivado, não armazenado**: `"Indisponível"` se `quantidade == 0`, caso contrário `"Disponível"`. Nas telas aparece como **Sim/Não** ("Disponível?"); a API continua devolvendo o texto
 
 **Movimentacao** (registro simples para rastreabilidade; sem tela de histórico no MVP)
 - `id`, `material_id`, `tipo` (`entrada` | `saida`), `quantidade` (inteiro > 0), `saldo_apos`, `data` (UTC)
@@ -106,10 +109,11 @@ Premissas de stack acima podem ser trocadas; confirme antes de mudar.
 | Criar categoria | `POST /categorias` | `nome` obrigatório e único **sem diferenciar maiúsculas de minúsculas** ("Escrita" = "escrita"); vazio ou duplicado → `422` |
 | Editar categoria | `PUT /categorias/{id}` | corpo `{nome, confirmar}`; mesmas regras de nome; com materiais **exige `confirmar: true`**, senão `409` com `afetados` (quantos registros seriam afetados) e nada é gravado |
 | Cadastrar material | `POST /materiais` | exige categoria válida |
+| Excluir material | `DELETE /materiais/{id}` | **exclusão lógica**; com saldo > 0 exige `?confirmar=true`, senão `409` com `saldo` e nada é gravado; sem saldo exclui direto; excluído → `404` em consulta e movimentação |
 | Registrar entrada | `POST /materiais/{id}/entrada` | soma ao saldo |
 | Registrar saída | `POST /materiais/{id}/saida` | subtrai do saldo, com bloqueio |
-| Consultar saldo | `GET /materiais` e `GET /materiais/{id}` | filtros `?categoria_id=`, `?q=` (parte do nome) e `?status=` (`Disponível`/`Indisponível`) |
-| Consultar saldos | `GET /saldos` | por categoria: `total_materiais`, `total_unidades` e `total_indisponiveis`, com o saldo e o status de cada material; `totais` traz o total geral. Categorias sem materiais aparecem com zeros |
+| Consultar saldo | `GET /materiais` e `GET /materiais/{id}` | filtros `?categoria_id=`, `?q=` (parte do nome) e `?status=` (`Disponível`/`Indisponível`); não trazem materiais excluídos |
+| Consultar saldos | `GET /saldos` | por categoria: `total_materiais`, `total_unidades` e `total_indisponiveis`, com o saldo e o status de cada material (sem os excluídos); `totais` traz o total geral. Categorias sem materiais aparecem com zeros. Categorias e materiais em ordem alfabética sem diferenciar maiúsculas |
 | Entrar / sair / quem sou | `POST /login`, `POST /logout`, `GET /me` | login por CPF + senha; sessão em cookie |
 | Manter usuários | `GET/POST /usuarios`, `GET/PUT /usuarios/{id}`, `POST /usuarios/{id}/inativar` e `/reativar` | CPF único; só o administrador |
 
@@ -117,8 +121,8 @@ Páginas web (todas exigem login, exceto `/login`):
 
 | Página | Rota | Quem acessa |
 |---|---|---|
-| Pesquisa (estoque agrupado por categoria, com busca e filtros) | `/pesquisa` | estoquista, operador |
-| Saldos (total geral, resumo por categoria e saldo por material) | `/estoque/saldos` | estoquista, operador |
+| Pesquisa (estoque agrupado por categoria, com busca e filtros; botão **Excluir** só para quem pode excluir) | `/pesquisa` | estoquista, operador |
+| Saldos (total geral e tabela de materiais: Material, Quantidade, Categoria e Disponível, agrupada por categoria em ordem alfabética) | `/estoque/saldos` | estoquista, operador |
 | Movimentar | `/movimentar` | operador |
 | Cadastro (material, "Nova categoria" e lista de categorias com edição e confirmação) | `/materiais/novo` | estoquista |
 | Usuários | `/gestao/usuarios` | administrador |
@@ -133,13 +137,14 @@ Páginas web (todas exigem login, exceto `/login`):
 | Criar categoria | ✅ | | |
 | Editar categoria (com aviso de impacto) | ✅ | | |
 | Cadastrar material (estoque inicial e mínimo) | ✅ | | |
+| Excluir material (exclusão lógica, com confirmação se houver saldo) | ✅ | | |
 | Consultar / pesquisar estoque e saldos | ✅ | ✅ | |
 | Movimentar (entrada e saída) | | ✅ | |
 | Manter usuários | | | ✅ |
 
 Leituras de apoio aceitam "qualquer uma de" várias ações: `GET /categorias` serve a quem consulta, cadastra material, cria ou edita categoria; a lista de materiais serve também a quem movimenta.
 
-Códigos de erro: `401` sem login; `403` perfil sem permissão; `404` material/categoria/usuário inexistente; `422` dado inválido (inclui categoria inválida, quantidade ≤ 0, CPF inválido, filtro de status inválido); `409` saldo insuficiente, CPF de usuário duplicado, inativar/rebaixar o último administrador, ou alterar categoria com materiais sem confirmação (a resposta traz também `afetados`, um inteiro). Respostas de erro com mensagem clara em português, sempre como texto em `detail`.
+Códigos de erro: `401` sem login; `403` perfil sem permissão; `404` material/categoria/usuário inexistente; `422` dado inválido (inclui categoria inválida, quantidade ≤ 0, CPF inválido, filtro de status inválido); `409` saldo insuficiente, CPF de usuário duplicado, inativar/rebaixar o último administrador, alterar categoria com materiais sem confirmação (a resposta traz também `afetados`, um inteiro), ou excluir material com saldo sem confirmação (a resposta traz também `saldo`, um inteiro). Respostas de erro com mensagem clara em português, sempre como texto em `detail`.
 
 ## 5. Critérios de aceite
 
@@ -161,12 +166,12 @@ Códigos de erro: `401` sem login; `403` perfil sem permissão; `404` material/c
 - **CA-07 CPF único:** não é permitido duplicar usuários; o campo único é o **CPF**. CPF repetido (mesmo com máscara diferente, mesmo de usuário inativo) → rejeitar com `409` e não gravar nada. O CPF precisa ter dígitos verificadores válidos.
 - **CA-08 Permissões por perfil:** cada perfil só faz o que a matriz da seção 4 permite, **na API e nas telas**. Sem login → `401` (páginas: redireciona ao login); sem permissão → `403`. Estoquista cadastra e informa valores de estoque; operador só movimenta e pesquisa; administrador só mantém usuários.
 
-### Categorias e consulta de saldo (CA-09 e CA-10: Sprint 5; CA-11: Sprint 6; ambas concluídas)
+### Categorias e consulta de saldo (CA-09 e CA-10: Sprint 5; CA-11: Sprint 6, redefinido pelo CA-13 na tela; concluídos)
 - **CA-09 Edição de categoria:** o estoquista pode alterar o nome de uma categoria. Nome vazio ou já usado por outra categoria (**sem diferenciar maiúsculas de minúsculas**) → `422`, sem gravar; categoria inexistente → `404`; outros perfis → `403`.
 - **CA-10 Aviso de impacto:** antes de alterar uma categoria que tem materiais, o sistema informa **quantos registros serão afetados** e só grava com confirmação. Sem confirmação (`confirmar: true`), o servidor responde `409` com a quantidade (`afetados`) e **nada é gravado**. Categoria sem materiais grava direto. Nome repetido é recusado antes de pedir a confirmação.
-- **CA-11 Consulta de saldo:** a visão **Saldos** mostra, por categoria, o total de materiais, o total de unidades e quantos estão indisponíveis, e o saldo atual de cada material, sempre coerente com as entradas e saídas já registradas. Mostra também o **total geral** e inclui as categorias sem materiais (com zeros).
+- **CA-11 Consulta de saldo** (a API segue assim; **na tela, o CA-13 redefine** a apresentação): a visão **Saldos** mostra, por categoria, o total de materiais, o total de unidades e quantos estão indisponíveis, e o saldo atual de cada material, sempre coerente com as entradas e saídas já registradas. Mostra também o **total geral** e inclui as categorias sem materiais (com zeros).
 
-### Exclusão de materiais e consulta por material (Sprint 8 — planejados)
+### Exclusão de materiais e consulta por material (Sprint 8, concluída)
 - **CA-12 Exclusão lógica de material:** o estoquista pode excluir um material. O registro **não é apagado do banco**: fica marcado como excluído e **deixa de aparecer** em todas as telas e consultas (Pesquisa, Saldos, Movimentar e nos totais) e de aceitar movimentações; consultar ou movimentar um material excluído → `404`. Material com **saldo maior que zero** só é excluído com confirmação (`confirmar: true`): sem ela, o servidor responde `409` informando o saldo e **nada é gravado**; com saldo 0, exclui direto. As movimentações antigas **continuam guardadas**. Outros perfis → `403`.
 - **CA-13 Consulta por material:** a tela Saldos lista os materiais com as colunas **Material, Quantidade, Categoria e Disponível**, **agrupados por categoria em ordem alfabética** (e por nome dentro da categoria), sem materiais excluídos e sempre coerente com as entradas e saídas. Isso **redefine** o CA-11 na tela (os totais por categoria deixam de ser exibidos; o total geral continua).
 - **CA-14 Disponibilidade em sim ou não:** nas telas (Pesquisa, Saldos e filtros), a disponibilidade aparece como **Sim** (saldo maior que zero) ou **Não** (saldo 0). A regra do status (CA-05) e o campo `status` da API não mudam.
@@ -186,11 +191,14 @@ Códigos de erro: `401` sem login; `403` perfil sem permissão; `404` material/c
 11. A sessão (cookie assinado, `HttpOnly`, `SameSite=Lax`, 8 h) **relê o usuário no banco a cada requisição**: inativar um usuário ou mudar o perfil dele vale na próxima chamada.
 12. Usuários não são apagados, apenas inativados. O **último administrador ativo** não pode ser inativado nem rebaixado.
 13. O CPF de um usuário não pode ser alterado depois de cadastrado.
-14. O nome da categoria é único **sem diferenciar maiúsculas de minúsculas** ("Escrita" é igual a "escrita"), na criação, na edição e no seed. A comparação é feita no service com `casefold` (o `lower()` do SQLite só trata ASCII); **acentos diferenciam** ("Informatica" ≠ "Informática"). Na mensagem de erro aparece o nome já existente. O índice único do banco continua diferenciando maiúsculas (não há migração) e serve só de rede de segurança.
+14. O nome da categoria é único **sem diferenciar maiúsculas de minúsculas** ("Escrita" é igual a "escrita"), na criação, na edição e no seed. A comparação é feita no service com `casefold` (o `lower()` do SQLite só trata ASCII); **acentos diferenciam** ("Informatica" ≠ "Informática"). Na mensagem de erro aparece o nome já existente. O índice único do banco continua diferenciando maiúsculas (mudá-lo exigiria uma migração maior que a leve da regra 18) e serve só de rede de segurança.
 15. Alterar o nome de uma categoria que tem materiais exige confirmação explícita do cliente (`confirmar: true`); sem ela o servidor informa quantos registros seriam afetados e não grava. A regra vale só para a edição de categoria.
 16. Na consulta de saldos, **todos os totais** (por categoria e geral) são calculados no service, nunca no JavaScript. A contagem de indisponíveis reusa `calcular_status`. Categorias e materiais saem em ordem alfabética sem diferenciar maiúsculas de minúsculas.
+17. A exclusão de material é **lógica**: o registro continua no banco com `excluido_em` preenchido, e as suas movimentações **não são apagadas**. **Todo ponto que lê materiais ignora os excluídos** (listagem e busca, consulta por id, saldos, totais da categoria, aviso de "registros afetados" e movimentação). Material com saldo maior que zero só é excluído com `confirmar`; a tela busca o saldo atual antes de pedir a confirmação. Não há como restaurar pela interface.
+18. **Migração leve:** ao iniciar, `app/migracoes.py` confere e acrescenta as colunas novas que faltam (hoje `materiais.excluido_em`), com `ALTER TABLE ... ADD COLUMN`. Só **adiciona** colunas vazias, nunca altera nem apaga dados, e é idempotente. **Outras mudanças de estrutura** (alterar ou remover colunas, mudar índices) continuam exigindo recriar o banco ou alterar a tabela à mão. Com `--reload`, o servidor aplica a migração assim que o código novo é salvo.
+19. Nas telas, a disponibilidade é rotulada **Sim/Não**; a tradução do texto da API (`"Disponível"` → Sim; demais → Não) é só um rótulo, feito em um único lugar do JavaScript (`rotuloDisponivel`). O JavaScript não calcula o status.
 
-## 7. Plano em sprints (1 a 7 concluídas; 8 planejada)
+## 7. Plano em sprints (1 a 8 concluídas)
 
 ### Sprint 1 — Fundação e cadastro
 - Setup do projeto (FastAPI, SQLAlchemy, pytest, ruff, estrutura de pastas)
@@ -250,13 +258,13 @@ Documento de produto, não de código: `docs/visao-do-produto.md` (Markdown, dec
 3. **Revisar contra o sistema** (toda afirmação deve valer hoje), ligar o documento no README e em `docs/`. **Feito.** A revisão achou e corrigiu cinco imprecisões: (a) "todas as mensagens em português" era falso, pois endereços inexistentes (`404 "Not Found"`) e métodos não permitidos (`405 "Method Not Allowed"`) respondem em inglês (corrigido também no README e em `docs/api.md`); (b) uma linha "quem decide compras" sugeria um perfil que não existe; (c) "histórico dessa pessoa" sugeria um histórico que o sistema não tem; (d) o princípio "avisar antes de afetar" soava geral, mas hoje vale só para a edição de categoria; (e) a tela Saldos poderia ser confundida com os relatórios e painéis que estão fora do escopo.
 - **Pronto quando:** o documento está escrito, revisado e versionado, e nada nele contradiz o que o sistema faz. **Verificado** contra o código e o comportamento real (sessão de 8 h, categorias iniciais, permissões, respostas de erro) e ligado no README e em `docs/`.
 
-### Sprint 8 — Exclusão lógica de materiais e consulta por material (planejada; pedido explícito, amplia o escopo)
+### Sprint 8 — Exclusão lógica de materiais e consulta por material (concluída; pedido explícito, amplia o escopo)
 Três mudanças pedidas pelo dono do projeto: (1) excluir materiais de forma **lógica**; (2) a tela de saldos passa a listar **cada material** (nome, quantidade, categoria e disponibilidade), agrupado por categoria em ordem alfabética; (3) a disponibilidade passa a ser exibida como **Sim** ou **Não**.
 1. **Exclusão lógica (service e API).** Nova coluna `excluido_em` em `materiais` (data e hora UTC; vazia = material ativo), criada por uma **migração leve e idempotente ao iniciar** (`ALTER TABLE ... ADD COLUMN`, sem tocar nos dados). É a **primeira mudança em uma tabela existente**: o `estoque.db` já em uso se atualiza sozinho (recomenda-se copiar o arquivo antes). Nova ação `EXCLUIR_MATERIAL`, concedida ao **estoquista**; `DELETE /materiais/{id}` faz a exclusão lógica. **Material com saldo maior que zero exige confirmação** (`confirmar: true`): sem ela o servidor responde `409` informando o saldo e nada é gravado; com saldo 0, exclui direto. O material excluído **some** de Pesquisa, Saldos, Movimentar e dos totais (inclusive o total de materiais por categoria e o aviso de "registros afetados" da edição de categoria); consultá-lo ou movimentá-lo dá `404`. As **movimentações antigas continuam guardadas**.
 2. **Telas.** Botão **Excluir** na Pesquisa, só para quem tem a permissão, com janela de confirmação (`<dialog>`) que mostra o saldo quando houver. Tela **Saldos**: os cartões do total geral continuam; a tabela única **substitui** "Resumo por categoria" e "Saldo por material" e tem as colunas **Material | Quantidade | Categoria | Disponível**, **agrupada por categoria em ordem alfabética** e com os materiais em ordem alfabética dentro de cada categoria, sem coluna extra à esquerda. **Disponível** aparece como **Sim** ou **Não** em Pesquisa, Saldos e nos filtros ("Disponível: Todos, Sim, Não"). A **API não muda** (`status` continua `"Disponível"`/`"Indisponível"`, e `GET /saldos` continua devolvendo os totais por categoria; a tela é que não os exibe mais).
 3. **Fechamento:** testes CA-12 a CA-14, documentação (README, `docs/`, visão do produto) e este arquivo.
 - Fora desta sprint: **restaurar** um material excluído (a exclusão fica só no banco) e excluir categorias.
-- **Pronto quando:** o estoquista exclui um material pela tela (com confirmação quando há saldo) e ele deixa de aparecer em todo o sistema, sem apagar o histórico; o banco já existente é atualizado sem perda de dados; a tela Saldos mostra a tabela nas colunas pedidas, agrupada por categoria em ordem alfabética; e a disponibilidade aparece como Sim ou Não nas telas.
+- **Pronto quando:** o estoquista exclui um material pela tela (com confirmação quando há saldo) e ele deixa de aparecer em todo o sistema, sem apagar o histórico; o banco já existente é atualizado sem perda de dados; a tela Saldos mostra a tabela nas colunas pedidas, agrupada por categoria em ordem alfabética; e a disponibilidade aparece como Sim ou Não nas telas. **Verificado:** CA-12, CA-13 e CA-14 passam (testes `test_ca12_*`, `test_ca13_*` e `test_ca14_*`), a migração foi aplicada sem perda ao `estoque.db` em uso, e as telas foram conferidas no navegador em desktop e celular.
 
 ## 8. Padrões de código
 
@@ -325,7 +333,7 @@ pytest                          # testes (SQLite em memória)
 ruff check . && ruff format .   # lint e formatação
 ```
 
-O banco é o arquivo `estoque.db`, criado na raiz ao iniciar o app, junto com o seed das categorias. As tabelas novas são criadas sozinhas, mas **não há migração**: colunas novas em tabelas já existentes exigem recriar o banco ou alterar a tabela à mão.
+O banco é o arquivo `estoque.db`, criado na raiz ao iniciar o app, junto com o seed das categorias. As tabelas novas são criadas sozinhas e, desde a Sprint 8, uma **migração leve** (`app/migracoes.py`) acrescenta ao iniciar as colunas novas que faltam em tabelas existentes (regra 18). Antes de atualizar o código com um `estoque.db` que importa, **copie o arquivo**. Mudanças além de acrescentar colunas exigem recriar o banco ou alterar a tabela à mão.
 
 ### Variáveis de ambiente
 
@@ -375,7 +383,7 @@ O cookie de sessão não tem a flag `Secure` (funciona em `http://localhost`). A
 - [x] Quem mantém os usuários? → **Novo perfil Administrador** (fora das duas permissões originais)
 - [x] Como remover um usuário? → **Inativar**
 - [x] Segurança das senhas no protótipo? → **Simplificada**: senhas de 6+ caracteres, senha padrão `123456` e administrador padrão (CPF `529.982.247-25`). **Rever antes de uso real** (tamanho mínimo, senha padrão, administrador no código, chave de sessão)
-- [ ] Registrar **quem** fez cada entrada e saída (`usuario_id` em `Movimentacao`)? Foi sugerido na Sprint 4, **não foi implementado**; exige migração do banco
+- [ ] Registrar **quem** fez cada entrada e saída (`usuario_id` em `Movimentacao`)? Foi sugerido na Sprint 4, **não foi implementado**; exige acrescentar uma coluna (`usuario_id`) em `movimentacoes`, o que a migração leve da regra 18 comportaria
 - [ ] "Informar valores de estoque" inclui **editar** estoque inicial/mínimo de um material já cadastrado? Hoje só é possível ao cadastrar; não há endpoint de edição
 - [ ] Limite de tentativas de login e troca de senha pelo próprio usuário?
 
