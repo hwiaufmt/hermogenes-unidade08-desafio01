@@ -8,7 +8,7 @@ Com o app rodando, abra <http://localhost:8000>. Você precisa **entrar com CPF 
 
 | Perfil | O que faz | Telas |
 |---|---|---|
-| **Estoquista** | cadastra e exclui materiais (com estoque inicial e mínimo), cria e edita categorias e consulta o estoque e os saldos | Pesquisa, Saldos, Cadastro |
+| **Estoquista** | cadastra e exclui materiais (com estoque inicial e mínimo), cria, edita e exclui categorias e consulta o estoque e os saldos | Pesquisa, Saldos, Cadastro |
 | **Operador** | registra entradas e saídas e consulta o estoque e os saldos | Pesquisa, Saldos, Movimentar |
 | **Administrador** | mantém os usuários (e só isso) | Usuários |
 
@@ -92,7 +92,18 @@ Mais abaixo na página, a seção **Categorias cadastradas** lista cada categori
 
 Se o novo nome já existir (em qualquer caixa, "papelaria" conta como "Papelaria"), o erro aparece na própria janela de edição e **nenhuma confirmação é pedida**. Trocar só maiúsculas e minúsculas do próprio nome ("Limpeza" para "LIMPEZA") é permitido e segue as mesmas regras acima.
 
-> Excluir categorias e editar materiais já cadastrados não faz parte do MVP (excluir material é feito na Pesquisa, abaixo). Os valores de estoque (inicial e mínimo) são informados no cadastro.
+### Excluir categoria
+
+Na mesma lista, o estoquista também vê o botão **Excluir**.
+
+1. Clique em **Excluir** na linha da categoria. Abre uma janela de confirmação (o foco já começa em **Cancelar**).
+2. Clique em **Excluir categoria** para confirmar, ou em **Cancelar** para desistir.
+
+**Só é possível excluir categoria sem materiais.** Se ela tem materiais, o sistema recusa e diz quantos, por exemplo: *"A categoria 'Escrita' tem 2 materiais; exclua os materiais antes de excluir a categoria."* Materiais já excluídos não contam.
+
+A exclusão é **lógica**: a categoria some da lista, do formulário de material e dos Saldos, mas o registro continua no banco, e **não há como restaurar pela tela**. O **nome fica livre**: dá para criar outra categoria com o mesmo nome. As três categorias iniciais só voltam se o banco for recriado do zero; uma que você excluir não reaparece ao reiniciar.
+
+> Editar materiais já cadastrados não faz parte do MVP (excluir material é feito na Pesquisa, abaixo). Os valores de estoque (inicial e mínimo) são informados no cadastro.
 
 ## Tela Movimentar (`/movimentar`, operador)
 
@@ -152,6 +163,7 @@ Os erros aparecem em uma faixa no topo da tela, em português. As mais comuns:
 | A quantidade deve ser um número inteiro maior que zero. | usar 1 ou mais |
 | Saldo insuficiente de '...': disponível N, solicitado M. | pedir no máximo o saldo disponível, ou registrar uma entrada antes |
 | Já existe uma categoria chamada '...'. | usar a categoria existente (a mensagem mostra o nome já cadastrado, mesmo que você tenha digitado em outra caixa) |
+| A categoria '...' tem N material(is); exclua os materiais antes de excluir a categoria. | excluir (ou já ter excluído) os materiais da categoria e tentar de novo |
 | Esta categoria tem N materiais; a mudança de nome afetará N registros. Confirme para gravar. | não é um erro: é o aviso antes de gravar. Use **Confirmar alteração** para seguir ou **Voltar** para desistir |
 | CPF inválido. | conferir os 11 dígitos |
 | Já existe um usuário com o CPF .... | o usuário já está cadastrado (talvez inativo; reative-o) |

@@ -68,7 +68,7 @@ Premissas de stack acima podem ser trocadas; confirme antes de mudar.
     ├── conftest.py          # fixtures: cliente_anonimo, entrar_como, client
     ├── test_cadastro.py, test_categorias.py, test_entrada.py, test_saida.py
     ├── test_edicao_categoria.py, test_categoria_nome_sem_case.py
-    ├── test_exclusao_material.py, test_migracoes.py
+    ├── test_exclusao_material.py, test_exclusao_categoria.py, test_migracoes.py
     ├── test_estoque.py, test_pesquisa.py, test_saldos.py, test_fluxo_completo.py, test_erros.py
     ├── test_usuarios.py, test_login.py, test_administrador_inicial.py
     └── test_permissoes.py, test_acesso_rotas.py, test_paginas.py
@@ -80,7 +80,8 @@ Premissas de stack acima podem ser trocadas; confirme antes de mudar.
 
 **Categoria**
 - `id`, `nome` (obrigatório; único **sem diferenciar maiúsculas de minúsculas**, e **editável** pelo estoquista)
-- Seed inicial: **Papelaria**, **Escrita**, **Informática**
+- `excluido_em` — data e hora (UTC) da **exclusão lógica**; vazia = categoria ativa. Ao excluir, o `nome` guardado ganha o sufixo `" [excluída #id]"` para liberar o nome
+- Seed inicial: **Papelaria**, **Escrita**, **Informática** (criado **só com a tabela vazia**, contando as excluídas)
 
 **Material**
 - `id`
@@ -108,6 +109,7 @@ Premissas de stack acima podem ser trocadas; confirme antes de mudar.
 | Listar categorias | `GET /categorias` | usado nos formulários e filtros; informa `total_materiais` de cada categoria |
 | Criar categoria | `POST /categorias` | `nome` obrigatório e único **sem diferenciar maiúsculas de minúsculas** ("Escrita" = "escrita"); vazio ou duplicado → `422` |
 | Editar categoria | `PUT /categorias/{id}` | corpo `{nome, confirmar}`; mesmas regras de nome; com materiais **exige `confirmar: true`**, senão `409` com `afetados` (quantos registros seriam afetados) e nada é gravado |
+| Excluir categoria | `DELETE /categorias/{id}` | **exclusão lógica**; só sem materiais ativos, senão `409` com `materiais` (inteiro) e nada é gravado; excluída ou inexistente → `404`; libera o nome para nova categoria |
 | Cadastrar material | `POST /materiais` | exige categoria válida |
 | Excluir material | `DELETE /materiais/{id}` | **exclusão lógica**; com saldo > 0 exige `?confirmar=true`, senão `409` com `saldo` e nada é gravado; sem saldo exclui direto; excluído → `404` em consulta e movimentação |
 | Registrar entrada | `POST /materiais/{id}/entrada` | soma ao saldo |
@@ -136,6 +138,7 @@ Páginas web (todas exigem login, exceto `/login`):
 |---|---|---|---|
 | Criar categoria | ✅ | | |
 | Editar categoria (com aviso de impacto) | ✅ | | |
+| Excluir categoria (exclusão lógica, só sem materiais) | ✅ | | |
 | Cadastrar material (estoque inicial e mínimo) | ✅ | | |
 | Excluir material (exclusão lógica, com confirmação se houver saldo) | ✅ | | |
 | Consultar / pesquisar estoque e saldos | ✅ | ✅ | |
@@ -144,7 +147,7 @@ Páginas web (todas exigem login, exceto `/login`):
 
 Leituras de apoio aceitam "qualquer uma de" várias ações: `GET /categorias` serve a quem consulta, cadastra material, cria ou edita categoria; a lista de materiais serve também a quem movimenta.
 
-Códigos de erro: `401` sem login; `403` perfil sem permissão; `404` material/categoria/usuário inexistente; `422` dado inválido (inclui categoria inválida, quantidade ≤ 0, CPF inválido, filtro de status inválido); `409` saldo insuficiente, CPF de usuário duplicado, inativar/rebaixar o último administrador, alterar categoria com materiais sem confirmação (a resposta traz também `afetados`, um inteiro), ou excluir material com saldo sem confirmação (a resposta traz também `saldo`, um inteiro). Respostas de erro com mensagem clara em português, sempre como texto em `detail`.
+Códigos de erro: `401` sem login; `403` perfil sem permissão; `404` material/categoria/usuário inexistente; `422` dado inválido (inclui categoria inválida, quantidade ≤ 0, CPF inválido, filtro de status inválido); `409` saldo insuficiente, CPF de usuário duplicado, inativar/rebaixar o último administrador, alterar categoria com materiais sem confirmação (a resposta traz também `afetados`, um inteiro), ou excluir material com saldo sem confirmação (a resposta traz também `saldo`, um inteiro), ou excluir categoria com materiais (a resposta traz também `materiais`, um inteiro). Respostas de erro com mensagem clara em português, sempre como texto em `detail`.
 
 ## 5. Critérios de aceite
 
@@ -176,6 +179,10 @@ Códigos de erro: `401` sem login; `403` perfil sem permissão; `404` material/c
 - **CA-13 Consulta por material:** a tela Saldos lista os materiais com as colunas **Material, Quantidade, Categoria e Disponível**, **agrupados por categoria em ordem alfabética** (e por nome dentro da categoria), sem materiais excluídos e sempre coerente com as entradas e saídas. Isso **redefine** o CA-11 na tela (os totais por categoria deixam de ser exibidos; o total geral continua).
 - **CA-14 Disponibilidade em sim ou não:** nas telas (Pesquisa, Saldos e filtros), a disponibilidade aparece como **Sim** (saldo maior que zero) ou **Não** (saldo 0). A regra do status (CA-05) e o campo `status` da API não mudam.
 
+### Exclusão de categorias (Sprint 9, concluída)
+- **CA-15 Exclusão lógica de categoria:** o estoquista pode excluir uma categoria **sem materiais ativos** (materiais já excluídos não contam). O registro **não é apagado**: fica marcado como excluído e **deixa de aparecer** na lista de categorias, nos saldos, no cadastro de material (→ `422`), no filtro por categoria e na edição (→ `404`). Categoria **com materiais ativos** é bloqueada com `409` informando quantos (`materiais`), e nada é gravado. Inexistente ou já excluída → `404`; outros perfis → `403`. **O nome é liberado**: pode-se criar nova categoria com o mesmo nome (sem diferenciar maiúsculas), e a unicidade vale só entre categorias ativas. O seed não recria categoria inicial excluída.
+- **CA-16 Exclusão de categoria na tela:** na lista de categorias do Cadastro, quem tem a permissão vê o botão **Excluir**, que abre uma confirmação (foco inicial em Cancelar); com materiais, a tela mostra a mensagem do `409`. Quem não tem a permissão não vê o botão.
+
 ## 6. Regras de negócio e integridade
 
 1. Quantidade de entrada/saída: inteiro **maior que zero**.
@@ -195,10 +202,11 @@ Códigos de erro: `401` sem login; `403` perfil sem permissão; `404` material/c
 15. Alterar o nome de uma categoria que tem materiais exige confirmação explícita do cliente (`confirmar: true`); sem ela o servidor informa quantos registros seriam afetados e não grava. A regra vale só para a edição de categoria.
 16. Na consulta de saldos, **todos os totais** (por categoria e geral) são calculados no service, nunca no JavaScript. A contagem de indisponíveis reusa `calcular_status`. Categorias e materiais saem em ordem alfabética sem diferenciar maiúsculas de minúsculas.
 17. A exclusão de material é **lógica**: o registro continua no banco com `excluido_em` preenchido, e as suas movimentações **não são apagadas**. **Todo ponto que lê materiais ignora os excluídos** (listagem e busca, consulta por id, saldos, totais da categoria, aviso de "registros afetados" e movimentação). Material com saldo maior que zero só é excluído com `confirmar`; a tela busca o saldo atual antes de pedir a confirmação. Não há como restaurar pela interface.
-18. **Migração leve:** ao iniciar, `app/migracoes.py` confere e acrescenta as colunas novas que faltam (hoje `materiais.excluido_em`), com `ALTER TABLE ... ADD COLUMN`. Só **adiciona** colunas vazias, nunca altera nem apaga dados, e é idempotente. **Outras mudanças de estrutura** (alterar ou remover colunas, mudar índices) continuam exigindo recriar o banco ou alterar a tabela à mão. Com `--reload`, o servidor aplica a migração assim que o código novo é salvo.
+18. **Migração leve:** ao iniciar, `app/migracoes.py` confere e acrescenta as colunas novas que faltam (hoje `materiais.excluido_em` e `categorias.excluido_em`), com `ALTER TABLE ... ADD COLUMN`. Só **adiciona** colunas vazias, nunca altera nem apaga dados, e é idempotente. **Outras mudanças de estrutura** (alterar ou remover colunas, mudar índices) continuam exigindo recriar o banco ou alterar a tabela à mão. Com `--reload`, o servidor aplica a migração assim que o código novo é salvo.
 19. Nas telas, a disponibilidade é rotulada **Sim/Não**; a tradução do texto da API (`"Disponível"` → Sim; demais → Não) é só um rótulo, feito em um único lugar do JavaScript (`rotuloDisponivel`). O JavaScript não calcula o status.
+20. A exclusão de categoria é **lógica** e só vale **sem materiais ativos**. Para liberar o nome (o `UNIQUE` de `categorias.nome` não sai com `ALTER TABLE`), o nome guardado vira `"<nome> [excluída #id]"`; assim basta a coluna nova da migração leve. Toda leitura de categorias (listagem, totais, saldos, busca por id, nome repetido) ignora as excluídas, via `listar_categorias` e `_obter_categoria_ativa`. O seed só cria as categorias iniciais com a tabela **vazia** (contando as excluídas), para não ressuscitá-las.
 
-## 7. Plano em sprints (1 a 8 concluídas; 9 planejada)
+## 7. Plano em sprints (1 a 9 concluídas)
 
 ### Sprint 1 — Fundação e cadastro
 - Setup do projeto (FastAPI, SQLAlchemy, pytest, ruff, estrutura de pastas)
@@ -266,14 +274,14 @@ Três mudanças pedidas pelo dono do projeto: (1) excluir materiais de forma **l
 - Fora desta sprint: **restaurar** um material excluído (a exclusão fica só no banco) e excluir categorias.
 - **Pronto quando:** o estoquista exclui um material pela tela (com confirmação quando há saldo) e ele deixa de aparecer em todo o sistema, sem apagar o histórico; o banco já existente é atualizado sem perda de dados; a tela Saldos mostra a tabela nas colunas pedidas, agrupada por categoria em ordem alfabética; e a disponibilidade aparece como Sim ou Não nas telas. **Verificado:** CA-12, CA-13 e CA-14 passam (testes `test_ca12_*`, `test_ca13_*` e `test_ca14_*`), a migração foi aplicada sem perda ao `estoque.db` em uso, e as telas foram conferidas no navegador em desktop e celular.
 
-### Sprint 9 — Exclusão lógica de categorias (planejada; pedido explícito, amplia o escopo)
+### Sprint 9 — Exclusão lógica de categorias (concluída; pedido explícito, amplia o escopo)
 Decisões do dono do projeto: (a) categoria **com materiais ativos não pode ser excluída** (bloqueio com `409` informando quantos); (b) só o **estoquista** exclui; (c) o **nome é liberado** para nova categoria; (d) **sem restauração** pela interface.
-1. **Service e API.** Nova coluna `excluido_em` em `categorias`, pela migração leve (`COLUNAS_NOVAS`). Nova ação `EXCLUIR_CATEGORIA` (estoquista). `DELETE /categorias/{id}`: inexistente ou já excluída → `404`; com materiais ativos → `409` com `materiais` (inteiro) e nada gravado; sem materiais, marca `excluido_em`. **Liberar o nome:** o `UNIQUE` de `categorias.nome` não sai com `ALTER TABLE`; por isso, ao excluir, o nome guardado vira `"<nome> [excluída #id]"` (migração leve, sem recriar tabela). A unicidade por `casefold` passa a olhar **só categorias ativas**. Categoria excluída some de `GET /categorias`, `GET /saldos`, da validação em `POST /materiais` (→ `422`), do filtro `?categoria_id=` (→ `404`), da edição (→ `404`) e do seed (que não recria categorias do seed excluídas só por faltarem: ver dúvida abaixo).
+1. **Service e API.** Nova coluna `excluido_em` em `categorias`, pela migração leve (`COLUNAS_NOVAS`). Nova ação `EXCLUIR_CATEGORIA` (estoquista). `DELETE /categorias/{id}`: inexistente ou já excluída → `404`; com materiais ativos → `409` com `materiais` (inteiro) e nada gravado; sem materiais, marca `excluido_em`. **Liberar o nome:** o `UNIQUE` de `categorias.nome` não sai com `ALTER TABLE`; por isso, ao excluir, o nome guardado vira `"<nome> [excluída #id]"` (migração leve, sem recriar tabela). A unicidade por `casefold` passa a olhar **só categorias ativas**. Categoria excluída some de `GET /categorias`, `GET /saldos`, da validação em `POST /materiais` (→ `422`), do filtro `?categoria_id=` (→ `404`), da edição (→ `404`) e do seed.
 2. **Telas.** Na lista de categorias do Cadastro, botão **Excluir** (só com a permissão) e `<dialog>` de confirmação; com materiais, a tela mostra a mensagem do `409`.
 3. **Fechamento:** testes CA-15 e CA-16, documentação (README, `docs/`, visão do produto) e este arquivo.
-- **Dúvida a resolver na parte 1:** o seed recria Papelaria, Escrita e Informática se não existirem; como o nome foi liberado, uma categoria do seed excluída **voltaria no próximo início**. Proposta: o seed só roda quando a tabela está vazia (inclusive de excluídas).
+- **Seed (decidido na parte 1):** como o nome foi liberado, uma categoria inicial excluída voltaria no próximo início; por isso o seed só roda com a tabela de categorias **vazia** (contando as excluídas). Efeito: um banco sem as três categorias iniciais, mas com outras, não as recebe de volta.
 - Fora desta sprint: restaurar categoria excluída.
-- **Pronto quando:** o estoquista exclui uma categoria sem materiais pela tela; com materiais, é bloqueado e vê quantos; a categoria some de todo o sistema e o nome pode ser reutilizado; o banco existente é migrado sem perda.
+- **Pronto quando:** o estoquista exclui uma categoria sem materiais pela tela; com materiais, é bloqueado e vê quantos; a categoria some de todo o sistema e o nome pode ser reutilizado; o banco existente é migrado sem perda. **Verificado:** CA-15 e CA-16 passam (testes `test_ca15_*` e `test_ca16_*`) e a tela foi conferida no navegador em desktop e celular (categoria com material bloqueada, sem material excluída, nome reutilizado).
 
 ## 8. Padrões de código
 
@@ -301,7 +309,7 @@ Decisões do dono do projeto: (a) categoria **com materiais ativos não pode ser
 
 Aprovação de requisições, fornecedores e notas fiscais, relatórios e dashboards, notificações, integrações (ERP/e-mail), multi-filial, edição/exclusão de movimentações, histórico em tela, app mobile nativo, exportação.
 
-Excluir categorias (a edição do nome é a Sprint 5; a exclusão **lógica** é a Sprint 9, ainda não implementada) e restaurar categoria excluída. Saldo em data passada e extrato de movimentações por material (a Sprint 6 trata só do saldo atual). Restaurar um material excluído (a exclusão lógica da Sprint 8 só marca o registro no banco).
+Excluir categoria **de forma definitiva** (a exclusão **lógica** é a Sprint 9) e restaurar categoria excluída. Saldo em data passada e extrato de movimentações por material (a Sprint 6 trata só do saldo atual). Restaurar um material excluído (a exclusão lógica da Sprint 8 só marca o registro no banco).
 
 Dentro de usuários e acesso, também fora do escopo por ora: recuperação/troca de senha pelo próprio usuário, limite de tentativas de login, login por provedor externo (SSO), edição de CPF e exclusão definitiva de usuários, e registrar quem fez cada movimentação.
 
@@ -367,7 +375,7 @@ O cookie de sessão não tem a flag `Secure` (funciona em `http://localhost`). A
 
 - [x] Manter SQLite no MVP ou usar outro banco? → **SQLite**
 - [x] Exibir indicador de "estoque baixo" usando `estoque_minimo`? → **Não, fora do MVP**
-- [x] Categorias poderão ser criadas pela interface ou só via seed? → **Pela interface**, além do seed. **Editar o nome** entra na Sprint 5; **excluir** continua fora do escopo
+- [x] Categorias poderão ser criadas pela interface ou só via seed? → **Pela interface**, além do seed. **Editar o nome** entra na Sprint 5; **excluir** (lógica) entra na Sprint 9
 - [x] Nome de categoria diferencia maiúsculas de minúsculas? → **Não**: "Escrita" é igual a "escrita" (criação e edição); acentos continuam diferenciando
 - [x] A regra "informar antes de alterar quantos registros serão afetados" vale para qual edição? → **Só a edição de categoria** (Sprint 5)
 - [x] Quem edita categorias? → **Só o estoquista** (nova ação `EDITAR_CATEGORIA`)
@@ -386,6 +394,11 @@ O cookie de sessão não tem a flag `Secure` (funciona em `http://localhost`). A
 - [x] Qual tela é o "resumo de categoria" e como fica? → **Saldos**: a tabela única de materiais (Material | Quantidade | Categoria | Disponível), agrupada por categoria em ordem alfabética, substitui o resumo e o detalhe; os cartões do total geral continuam
 - [x] Há uma coluna antes de "Material"? → **Não** (as colunas seguem a ordem listada, sem coluna extra)
 - [x] Onde a disponibilidade vira "Sim"/"Não"? → **Em todas as telas** (Pesquisa, Saldos e filtros); **a API não muda**
+- [x] O que acontece ao excluir categoria com materiais? → **Bloqueia** (`409` com a quantidade); só exclui categoria sem materiais ativos (Sprint 9)
+- [x] Quem exclui categoria? → **Só o estoquista** (nova ação `EXCLUIR_CATEGORIA`)
+- [x] O nome de categoria excluída pode ser reutilizado? → **Sim**; ao excluir, o nome guardado vira `"<nome> [excluída #id]"` (o `UNIQUE` do banco não sai com `ALTER TABLE`)
+- [x] Categoria excluída pode ser restaurada? → **Não** pela interface
+- [x] O seed recria categoria inicial excluída? → **Não**: só roda com a tabela de categorias vazia
 - [x] Haverá login em versão futura (impacta registrar "quem retirou")? → ~~Ignorar no MVP~~ **Superado na Sprint 4**: login por CPF + senha
 - [x] Como o usuário se identifica? → **CPF + senha**
 - [x] O estoquista também movimenta e pesquisa? → **Não**: só o descrito (cadastros, valores de estoque e consulta, ver matriz na seção 4)

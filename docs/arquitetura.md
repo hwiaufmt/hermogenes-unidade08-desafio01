@@ -24,7 +24,7 @@ Navegador (HTML + JS)  ──fetch──►  routers  ──►  services  ─�
 
 - **`main.py`**: cria o app, registra o `SessionMiddleware`, os routers, os arquivos estáticos e os tratadores de erro. No startup cria as tabelas, aplica a migração leve (`migracoes.py`), aplica o seed das categorias e cria o administrador inicial.
 - **`routers/autenticacao.py`**: `POST /login`, `POST /logout` e `GET /me`.
-- **`routers/categorias.py`**: `GET /categorias` (com `total_materiais`), `POST /categorias` e `PUT /categorias/{id}` (edição com confirmação).
+- **`routers/categorias.py`**: `GET /categorias` (com `total_materiais`), `POST /categorias` e `PUT /categorias/{id}` (edição com confirmação) e `DELETE /categorias/{id}` (exclusão lógica, só sem materiais).
 - **`routers/materiais.py`**: `GET /materiais` (com `categoria_id`, `q` e `status`), `GET /materiais/{id}`, `POST /materiais` e `DELETE /materiais/{id}` (exclusão lógica, com `?confirmar=true` quando há saldo).
 - **`migracoes.py`**: `migrar(engine)` compara as colunas esperadas com as do banco e acrescenta as que faltam (`ALTER TABLE ... ADD COLUMN`). Só adiciona colunas vazias, é idempotente e devolve a lista do que aplicou, que o startup registra no log.
 - **`routers/movimentacoes.py`**: `POST /materiais/{id}/entrada` e `.../saida`.
@@ -42,7 +42,7 @@ categorias                 materiais                      movimentacoes
 ──────────                 ─────────                      ─────────────
 id (PK)           ◄──┐     id (PK)              ◄──┐      id (PK)
 nome (único)         └──── categoria_id (FK)       └───── material_id (FK)
-                           nome                          tipo ('entrada' | 'saida')
+excluido_em (UTC, ou vazio)  nome                          tipo ('entrada' | 'saida')
                            quantidade (≥ 0)              quantidade (> 0)
                            estoque_minimo (≥ 0)          saldo_apos
                            excluido_em (UTC, ou vazio)   data (UTC)
@@ -62,7 +62,7 @@ ativo
 - Restrições no banco (`CHECK`): `quantidade >= 0` e `estoque_minimo >= 0` em materiais; `tipo` restrito e `quantidade > 0` em movimentações; `perfil` restrito em usuários.
 - `movimentacoes` serve para rastreabilidade. Não há tela nem endpoint de histórico no MVP, e **a tabela não registra qual usuário fez a movimentação** (decisão em aberto no `claude.md`).
 - **Exclusão lógica:** `materiais.excluido_em` vazio = material ativo. Todo ponto do service que lê materiais filtra `excluido_em IS NULL` (listagem, consulta por id, saldos, total da categoria, aviso de registros afetados, entrada e saída), então o material excluído responde `404` e some dos totais. As movimentações dele ficam guardadas.
-- **Migração leve:** tabelas novas são criadas por `create_all`; colunas novas em tabelas existentes (hoje só `materiais.excluido_em`) são acrescentadas por `migrar` ao iniciar, sem tocar nos dados. Outras mudanças de estrutura (alterar ou remover colunas, trocar índices) continuam exigindo recriar o banco. Com `--reload`, o servidor migra o `estoque.db` assim que o código é salvo; copie o arquivo antes.
+- **Migração leve:** tabelas novas são criadas por `create_all`; colunas novas em tabelas existentes (hoje `materiais.excluido_em` e `categorias.excluido_em`) são acrescentadas por `migrar` ao iniciar, sem tocar nos dados. Outras mudanças de estrutura (alterar ou remover colunas, trocar índices) continuam exigindo recriar o banco. Com `--reload`, o servidor migra o `estoque.db` assim que o código é salvo; copie o arquivo antes.
 
 ## Autenticação
 
@@ -85,6 +85,7 @@ A matriz `PERMISSOES` em `app/permissoes.py` liga cada perfil a um conjunto de a
 | `criar_categoria` | ✅ | | |
 | `editar_categoria` | ✅ | | |
 | `cadastrar_material` | ✅ | | |
+| `excluir_categoria` | ✅ | | |
 | `excluir_material` | ✅ | | |
 | `consultar_estoque` (Pesquisa, Saldos) | ✅ | ✅ | |
 | `movimentar` | | ✅ | |
@@ -124,7 +125,7 @@ A entrada segue o mesmo caminho, com `quantidade = quantidade + :n`.
 
 `consultar_saldos(db)` devolve uma estrutura de `NamedTuple`s (`ConsultaDeSaldos` com `categorias` e `totais`), que os schemas `ConsultaDeSaldosSaida` serializam:
 
-1. Lê todas as categorias e as ordena por `nome.casefold()`; lê todos os materiais de uma vez e os distribui por `categoria_id`.
+1. Lê todas as categorias **ativas** e as ordena por `nome.casefold()`; lê todos os materiais de uma vez e os distribui por `categoria_id`.
 2. Para cada categoria, `_saldo_da_categoria` calcula `total_materiais`, `total_unidades` (soma de `quantidade`) e `total_indisponiveis`, este último com `calcular_status(...) == "Indisponível"`, para a regra de status continuar em um só lugar.
 3. O **total geral** é a soma dos totais das categorias, calculada também no service. O JavaScript não soma nada.
 
@@ -138,8 +139,11 @@ Categorias sem materiais entram com zeros e lista vazia. Não há tabela nova, e
 | Sem saída dupla concorrente | Verificação e subtração atômicas no mesmo `UPDATE` |
 | Tudo ou nada | Saldo e movimentação no mesmo `commit`; `rollback` em qualquer falha |
 | Categoria obrigatória e válida | Verificada em `criar_material` antes de gravar |
-| Categoria única, **sem diferenciar maiúsculas** | O service compara os nomes com `casefold` (o `lower()` do SQLite só trata ASCII) ao criar, editar e semear; acentos diferenciam. O índice único de `categorias.nome` continua diferenciando maiúsculas (a migração leve não altera índices) e vale como rede de segurança: `IntegrityError` também vira `CategoriaDuplicadaError` |
+| Categoria única, **sem diferenciar maiúsculas** | O service compara os nomes com `casefold` (o `lower()` do SQLite só trata ASCII) ao criar e editar, **olhando só categorias ativas**; acentos diferenciam. O índice único de `categorias.nome` continua diferenciando maiúsculas (a migração leve não altera índices) e vale como rede de segurança: `IntegrityError` também vira `CategoriaDuplicadaError` |
 | Quem altera o nome de uma categoria sabe o que será afetado | `atualizar_categoria` conta os materiais da categoria; com materiais e sem `confirmar`, levanta `ConfirmacaoNecessariaError` e **nada é gravado**. A checagem de nome repetido vem antes, para não pedir confirmação de algo que falharia |
+| Excluir categoria só sem materiais | `excluir_categoria` conta os materiais ativos; com algum, levanta `CategoriaComMateriaisError` (`409`, com `materiais`) e nada é gravado. Material já excluído não conta |
+| Nome de categoria excluída liberado | O `UNIQUE` de `categorias.nome` não sai com `ALTER TABLE`; ao excluir, o nome guardado vira `"<nome> [excluída #id]"`, e `excluido_em` é preenchido |
+| Categoria inicial excluída não volta | `semear_categorias` só cria as iniciais com a tabela de categorias vazia (contando as excluídas) |
 | Quantidade inteira positiva | Validação no schema e, de novo, no service |
 | CPF único | Índice único em `usuarios.cpf` (só dígitos); `IntegrityError` vira `CpfDuplicadoError` |
 | CPF válido | Dígitos verificadores conferidos no schema; valor guardado só com dígitos |
@@ -152,7 +156,8 @@ Definidas em `services/estoque.py` e `services/usuarios.py` e convertidas em HTT
 
 | Exceção | HTTP |
 |---|---|
-| `CategoriaInexistenteError` | `422` ao cadastrar material; `404` ao filtrar a listagem |
+| `CategoriaInexistenteError` | `422` ao cadastrar material; `404` ao filtrar a listagem, editar ou excluir (inclui categoria já excluída) |
+| `CategoriaComMateriaisError` | `409`, com o campo extra `materiais` (também por `JSONResponse`) |
 | `CategoriaDuplicadaError` | `422` |
 | `ConfirmacaoNecessariaError` | `409`, com o campo extra `afetados` (o router devolve um `JSONResponse` com `detail` e `afetados`) |
 | `ConfirmacaoDeExclusaoError` | `409`, com o campo extra `saldo` (também por `JSONResponse`) |
@@ -174,7 +179,7 @@ Módulos ES, sem framework e sem variáveis globais:
 - **`saldos.js`**: busca `GET /saldos`, mostra o total geral e uma única tabela **Material | Quantidade | Categoria | Disponível**: só "achata" as categorias e os materiais na ordem em que o servidor os entrega (alfabética) e marca a primeira linha de cada categoria. Não faz conta nem reordena. O botão "Atualizar saldos" busca de novo.
 - **`tabelas.js`**: montagem de células, cabeçalhos e regiões rolagem-focáveis de tabela, e a **tradução do status em Sim/Não** (`rotuloDisponivel`, `criarSeloDisponivel`), usada por `pesquisa.js`, `saldos.js` e `movimentar.js`. É só rótulo: o JavaScript não calcula o status.
 - **`movimentar.js`**: lista materiais, mostra o saldo vindo da API e registra a movimentação.
-- **`cadastro.js`**: cadastra material, cria categoria e **edita categoria**: lista as categorias com o total de materiais e abre dois `<dialog>` nativos, um de edição e outro de confirmação. O texto do aviso ("afetará N registros") vem pronto do `detail` do `409`; a tela não monta a frase nem calcula nada. "Voltar" reabre a edição com o nome digitado. O botão "Editar" só existe para quem tem a ação `editar_categoria`.
+- **`cadastro.js`**: cadastra material, cria categoria e **edita categoria**: lista as categorias com o total de materiais e abre dois `<dialog>` nativos, um de edição e outro de confirmação. O texto do aviso ("afetará N registros") vem pronto do `detail` do `409`; a tela não monta a frase nem calcula nada. "Voltar" reabre a edição com o nome digitado. O botão "Editar" só existe para quem tem a ação `editar_categoria`. O botão **Excluir** só existe para quem tem `excluir_categoria` (`data-pode-excluir`): abre um `<dialog>` com o foco em "Cancelar" e chama `DELETE /categorias/{id}`; se o servidor recusar (`409`, categoria com materiais), a tela mostra a mensagem pronta do `detail`.
 - **`usuarios.js`**: lista, cadastra, edita (CPF travado, senha opcional), inativa e reativa usuários.
 
 O menu e o nome do usuário vêm renderizados pelo servidor (`base.html`), já filtrados pelo perfil.
@@ -197,6 +202,7 @@ Fixtures principais:
 | `test_categorias.py` | listar o seed, criar, duplicada, vazia |
 | `test_edicao_categoria.py` | CA-09 e CA-10: editar, nome vazio/repetido, 404, confirmação, singular/plural e totais |
 | `test_categoria_nome_sem_case.py` | nome de categoria único sem diferenciar maiúsculas (criar, editar e seed) |
+| `test_exclusao_categoria.py` | CA-15: exclusão lógica, bloqueio com materiais, `404`, nome liberado e reutilizável, categoria fora das listas, seed só com a tabela vazia |
 | `test_entrada.py` | CA-02 e entradas inválidas |
 | `test_saida.py` | CA-03, CA-04 e saídas inválidas |
 | `test_estoque.py` | CA-05, CA-06 e registro das movimentações |
@@ -211,6 +217,6 @@ Fixtures principais:
 | `test_administrador_inicial.py` | criação única do primeiro administrador |
 | `test_permissoes.py` | o mecanismo `exigir`, com matriz de teste própria |
 | `test_acesso_rotas.py` | CA-08: cada perfil × cada rota da API, com a **matriz real** |
-| `test_paginas.py` | CA-08 nas telas: redirecionamento, "Acesso negado", menu por perfil; CA-12 a CA-14 nas telas (botão Excluir, colunas de Saldos, Sim/Não) |
+| `test_paginas.py` | CA-08 nas telas: redirecionamento, "Acesso negado", menu por perfil; CA-12 a CA-14 nas telas (botão Excluir, colunas de Saldos, Sim/Não); CA-16 (exclusão de categoria no Cadastro) |
 
 O JavaScript não tem testes automatizados; foi conferido manualmente no navegador (desktop e celular) com os três perfis.

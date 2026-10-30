@@ -22,7 +22,7 @@ API REST em JSON. Com o app rodando, a documentação interativa (Swagger) fica 
 | `401` | sem login, sessão inválida/expirada, usuário inativo; ou CPF/senha errados no login |
 | `403` | logado, mas o perfil não tem a permissão da rota |
 | `404` | material, categoria ou usuário inexistente |
-| `409` | saldo insuficiente para a saída; CPF de usuário já cadastrado; inativar ou rebaixar o último administrador; alterar categoria com materiais sem confirmação (a resposta traz também `afetados`); excluir material com saldo sem confirmação (a resposta traz também `saldo`) |
+| `409` | saldo insuficiente para a saída; CPF de usuário já cadastrado; inativar ou rebaixar o último administrador; alterar categoria com materiais sem confirmação (a resposta traz também `afetados`); excluir material com saldo sem confirmação (a resposta traz também `saldo`); excluir categoria com materiais (a resposta traz também `materiais`) |
 | `422` | dado inválido: campo ausente, tipo errado, valor fora do limite, categoria inválida, nome duplicado, CPF/e-mail/perfil/senha inválidos, filtro de status inválido |
 
 ### Objetos
@@ -71,6 +71,7 @@ O `cpf` vem só com dígitos. A senha e o hash **nunca** são devolvidos.
 |---|---|---|---|
 | `criar_categoria` | ✅ | | |
 | `editar_categoria` | ✅ | | |
+| `excluir_categoria` | ✅ | | |
 | `cadastrar_material` | ✅ | | |
 | `excluir_material` | ✅ | | |
 | `consultar_estoque` (inclui `GET /saldos`) | ✅ | ✅ | |
@@ -120,9 +121,9 @@ Devolve o usuário da sessão. **Permissão:** apenas estar logado.
 
 ### `GET /categorias`
 
-**Permissão:** `consultar_estoque`, `cadastrar_material`, `criar_categoria` ou `editar_categoria` (qualquer uma).
+**Permissão:** `consultar_estoque`, `cadastrar_material`, `criar_categoria`, `editar_categoria` ou `excluir_categoria` (qualquer uma).
 
-Lista as categorias em ordem alfabética, com **quantos materiais cada uma tem** (`total_materiais`). Já vem com Papelaria, Escrita e Informática.
+Lista as categorias **ativas** (as excluídas não aparecem) em ordem alfabética, com **quantos materiais cada uma tem** (`total_materiais`). Já vem com Papelaria, Escrita e Informática.
 
 **200**
 
@@ -189,6 +190,31 @@ Altera o **nome** da categoria. As mesmas regras de nome da criação valem aqui
 Além do `detail` em texto, esta resposta traz `afetados`, o número de materiais da categoria. Para gravar, repita a chamada com `"confirmar": true`.
 
 Manter o mesmo nome não altera nada e não pede confirmação. Mudar só a caixa do próprio nome ("Limpeza" → "LIMPEZA") é permitido e, se a categoria tem materiais, pede confirmação como qualquer outra mudança de nome.
+
+### `DELETE /categorias/{id}`
+
+**Permissão:** `excluir_categoria`.
+
+Exclusão **lógica**: o registro continua no banco com a data da exclusão (`excluido_em`), mas a categoria deixa de aparecer em `GET /categorias`, em `GET /saldos`, no cadastro de material (`422`), no filtro `?categoria_id=` (`404`) e na edição (`404`). Só é permitida **sem materiais ativos**; materiais já excluídos não contam. Não há rota para restaurar.
+
+| Resposta | Descrição |
+|---|---|
+| `204` | excluída, sem corpo |
+| `404` | `"A categoria 99 não existe."` (inclui categoria já excluída) |
+| `409` | a categoria tem materiais (ver abaixo); nada é gravado |
+
+**`409` de bloqueio**
+
+```json
+{
+  "detail": "A categoria 'Escrita' tem 2 materiais; exclua os materiais antes de excluir a categoria.",
+  "materiais": 2
+}
+```
+
+**Nome liberado:** o banco guarda o nome da categoria com restrição de unicidade, que o SQLite não permite remover. Por isso, ao excluir, o nome guardado vira `"Limpeza [excluída #3]"`, e uma nova categoria "Limpeza" (em qualquer caixa) pode ser criada. A unicidade do nome vale só entre categorias ativas.
+
+**Categorias iniciais:** Papelaria, Escrita e Informática só são criadas quando a tabela de categorias está vazia (contando as excluídas), então uma inicial excluída não volta ao reiniciar.
 
 ---
 

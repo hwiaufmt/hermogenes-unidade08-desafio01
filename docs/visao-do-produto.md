@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Produto** | Controle de Materiais de Escritório |
-| **Estado** | Protótipo funcional (as sete sprints de funcionalidades estão concluídas) |
+| **Estado** | Protótipo funcional (as nove sprints de funcionalidades estão concluídas) |
 | **Público deste documento** | Equipe e donos do produto |
 | **Data** | 29/10/2026 |
 
@@ -15,7 +15,7 @@ Este documento descreve **o que o produto é, para quem serve e o que ele faz ho
 
 O **Controle de Materiais de Escritório** é uma aplicação web para saber, a qualquer momento, **quanto há de cada material de escritório** (papelaria, escrita, informática e o que mais a organização queira acompanhar). As pessoas cadastram os materiais por categoria, registram **entradas** (reposição) e **saídas** (retiradas) e consultam o **saldo atualizado**.
 
-O produto nasceu como um **MVP** com um objetivo único: validar o ciclo *cadastrar → registrar entrada → registrar saída → consultar saldo* com **regras de negócio confiáveis**. Sobre esse ciclo foram acrescentados, por decisão do dono do produto, o **controle de acesso** (usuários, login e três perfis) e melhorias de uso (edição de categorias com aviso de impacto, uma visão de saldos e a exclusão lógica de materiais).
+O produto nasceu como um **MVP** com um objetivo único: validar o ciclo *cadastrar → registrar entrada → registrar saída → consultar saldo* com **regras de negócio confiáveis**. Sobre esse ciclo foram acrescentados, por decisão do dono do produto, o **controle de acesso** (usuários, login e três perfis) e melhorias de uso (edição de categorias com aviso de impacto, uma visão de saldos e a exclusão lógica de materiais e de categorias).
 
 Hoje o sistema roda em um único computador, com um arquivo de banco de dados, e é um **protótipo**: funciona de ponta a ponta, mas algumas escolhas de segurança foram simplificadas de propósito e **não servem para uso real** (ver seção 10).
 
@@ -37,7 +37,7 @@ O sistema é usado por pessoas cadastradas (nome, CPF e e-mail), que entram com 
 
 | Perfil | Quem é | O que faz no sistema |
 |---|---|---|
-| **Estoquista** | Quem cuida do cadastro e da organização do estoque | Cadastra e exclui materiais (informando estoque inicial e mínimo), cria e edita categorias e consulta o estoque e os saldos |
+| **Estoquista** | Quem cuida do cadastro e da organização do estoque | Cadastra e exclui materiais (informando estoque inicial e mínimo), cria, edita e exclui categorias e consulta o estoque e os saldos |
 | **Operador** | Quem retira e repõe o material no dia a dia | Registra entradas e saídas e consulta o estoque e os saldos |
 | **Administrador** | Quem mantém o acesso ao sistema | Cadastra, edita, inativa e reativa usuários. **Não** mexe no estoque |
 
@@ -45,6 +45,7 @@ O sistema é usado por pessoas cadastradas (nome, CPF e e-mail), que entram com 
 |---|:---:|:---:|:---:|
 | Criar categoria | ✅ | | |
 | Editar categoria (com aviso de impacto) | ✅ | | |
+| Excluir categoria (exclusão lógica, só sem materiais) | ✅ | | |
 | Cadastrar material | ✅ | | |
 | Excluir material (exclusão lógica) | ✅ | | |
 | Consultar o estoque (Pesquisa e Saldos) | ✅ | ✅ | |
@@ -80,6 +81,7 @@ O que o produto **faz hoje**, por capacidade.
 - O estoquista cria novas categorias e **edita o nome** de uma categoria.
 - O nome é único **sem diferenciar maiúsculas de minúsculas**: "Escrita" e "escrita" são a mesma categoria.
 - Ao editar uma categoria que **já tem materiais**, o sistema **informa quantos registros serão afetados** e só grava depois de uma confirmação. Se a categoria não tem materiais, grava direto.
+- O estoquista pode **excluir** uma categoria (exclusão **lógica**), mas **só se ela não tiver materiais**: com materiais, o sistema recusa e informa quantos. A categoria excluída some do sistema e o nome pode ser reutilizado por uma nova categoria; o registro continua no banco e não há restauração pela interface. As categorias iniciais só são criadas com o banco vazio, então uma inicial excluída não volta ao reiniciar.
 
 ### Materiais
 - Todo material pertence a **uma categoria válida**; sem categoria, o sistema não grava.
@@ -108,7 +110,7 @@ O que o produto **faz hoje**, por capacidade.
 - Funciona em **computador e celular**.
 - Acessibilidade básica: campos com rótulo, foco visível, mensagens anunciadas a leitores de tela, alvos de toque de 44 px e contraste conferido.
 - As **mensagens das telas e os erros das operações** do sistema (saldo insuficiente, CPF inválido, nome repetido e outros) estão em português. A exceção são as respostas padrão do framework para **endereços inexistentes** e **métodos não permitidos**, que saem em inglês ("Not Found", "Method Not Allowed"), e a documentação interativa da API (`/docs`).
-- Testes automatizados cobrem **todos os critérios de aceite** (CA-01 a CA-14).
+- Testes automatizados cobrem **todos os critérios de aceite** (CA-01 a CA-16).
 
 ## 6. Fora do escopo
 
@@ -121,7 +123,7 @@ O que o produto **não faz**, de propósito:
 | **Histórico** | Tela de histórico de movimentações, extrato por material, saldo em data passada, edição ou exclusão de movimentações |
 | **Alertas e integrações** | Alerta de estoque baixo (o mínimo só é exibido), notificações, integração com outros sistemas (ERP, e-mail) |
 | **Organização** | Várias filiais ou locais de estoque |
-| **Cadastro** | Exclusão de categorias; edição de um material já cadastrado (os valores de estoque são informados no cadastro); restauração de um material excluído |
+| **Cadastro** | Edição de um material já cadastrado (os valores de estoque são informados no cadastro); restauração de material ou categoria excluídos; exclusão definitiva (a exclusão é só lógica) |
 | **Contas** | Troca ou recuperação de senha pelo próprio usuário, limite de tentativas de login, login por provedor externo, edição de CPF, exclusão definitiva de usuários |
 | **Autoria** | Registro de **quem** fez cada movimentação |
 | **Plataformas** | Aplicativo nativo para celular (a interface web funciona no celular) |
@@ -140,6 +142,7 @@ O escopo original era apenas o ciclo de estoque. Três sprints o entregaram; as 
 | **6. Consulta de saldos** | A visão Saldos, com total geral, resumo por categoria e saldo por material | Pedido do dono |
 | **7. Documento de visão** | Este documento | Pedido do dono |
 | **8. Exclusão lógica e saldos por material** | Exclusão lógica de materiais (com confirmação quando há saldo), tela Saldos como tabela por material agrupada por categoria e disponibilidade como Sim/Não | Pedido do dono |
+| **9. Exclusão lógica de categorias** | Exclusão lógica de categorias sem materiais, com o nome liberado para reutilização | Pedido do dono |
 
 Cada sprint foi entregue em partes pequenas, verificada contra os critérios de aceite e documentada.
 
@@ -151,8 +154,8 @@ Regras que valem em todo o produto e orientam qualquer decisão:
 2. **Tudo ou nada.** Uma operação ou é gravada por inteiro, ou não é gravada.
 3. **As regras vivem no servidor.** A interface só mostra e pede; ela não calcula saldo, status nem totais.
 4. **Cada perfil só faz o que lhe cabe**, e isso vale na API e nas telas, não apenas por esconder botões.
-5. **Nada é apagado de verdade.** Usuários são inativados, materiais são excluídos só de forma lógica (o registro e as movimentações ficam no banco) e o histórico de movimentações é preservado.
-6. **Avisar antes de afetar.** Uma mudança que atinge registros existentes informa o impacto antes de ser gravada. **Hoje isso vale em dois pontos**: a edição de categoria (informa quantos registros serão afetados) e a exclusão de material com saldo (informa quantas unidades há em estoque).
+5. **Nada é apagado de verdade.** Usuários são inativados, materiais e categorias são excluídos só de forma lógica (o registro e as movimentações ficam no banco) e o histórico de movimentações é preservado.
+6. **Avisar antes de afetar.** Uma mudança que atinge registros existentes informa o impacto antes de ser gravada. **Hoje isso vale em três pontos**: a edição de categoria (informa quantos registros serão afetados), a exclusão de material com saldo (informa quantas unidades há em estoque) e a exclusão de categoria, que o sistema **recusa** enquanto ela tiver materiais, informando quantos.
 7. **Falar a língua de quem usa.** Mensagens claras, em português, que dizem o que aconteceu e o que fazer.
 8. **Acessível e responsivo.** Utilizável em computador e celular, por quem usa teclado e por quem usa leitor de tela.
 
@@ -180,11 +183,11 @@ Esta seção descreve **o estado atual**: o que se assume, o que limita o produt
 - Existe **um único estoque** (um local), com os materiais contados em **unidades inteiras**.
 - O saldo reflete a realidade **desde que as movimentações sejam registradas**: o sistema não sabe de retiradas que ninguém lançou.
 - Quem usa o sistema tem **login** e recebe **um perfil**.
-- As categorias são poucas e conhecidas; não há exclusão de categorias.
+- As categorias são poucas e conhecidas; a exclusão é só lógica e a categoria precisa estar sem materiais.
 
 ### Restrições técnicas
-- O banco é **um arquivo local** (SQLite) e a evolução da estrutura é só uma **migração leve**: ao iniciar, o sistema acrescenta as colunas novas que faltam (hoje, a da exclusão lógica) e não mexe nos dados. Outras mudanças (alterar ou remover colunas) exigem recriar o banco ou alterá-lo à mão. Como a migração altera o arquivo do banco em uso, convém **copiá-lo antes de atualizar o sistema**.
-- Um material já cadastrado **não pode ser editado**; só o seu saldo muda, por movimentação. Se for excluído por engano, **não há restauração** pela interface (só alterando o banco).
+- O banco é **um arquivo local** (SQLite) e a evolução da estrutura é só uma **migração leve**: ao iniciar, o sistema acrescenta as colunas novas que faltam (hoje, as da exclusão lógica de materiais e de categorias) e não mexe nos dados. Outras mudanças (alterar ou remover colunas) exigem recriar o banco ou alterá-lo à mão. Como a migração altera o arquivo do banco em uso, convém **copiá-lo antes de atualizar o sistema**.
+- Um material já cadastrado **não pode ser editado**; só o seu saldo muda, por movimentação. Se um material ou uma categoria for excluído por engano, **não há restauração** pela interface (só alterando o banco; o nome de uma categoria excluída fica com o sufixo "[excluída #n]").
 - A movimentação **não registra o autor**, e **não há histórico em tela**.
 - O estoque mínimo é só informativo: **não há alerta de estoque baixo**.
 - A comparação de maiúsculas e minúsculas na busca por nome é garantida para letras sem acento; letras acentuadas podem não casar entre maiúscula e minúscula.
