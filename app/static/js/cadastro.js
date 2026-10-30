@@ -12,8 +12,12 @@ const erroEdicao = document.getElementById("erro-edicao");
 const dialogoConfirmacao = document.getElementById("dialogo-confirmacao");
 const textoConfirmacao = document.getElementById("texto-confirmacao");
 
+const dialogoExclusao = document.getElementById("dialogo-exclusao-categoria");
+const textoExclusao = document.getElementById("texto-exclusao-categoria");
+
 const podeEditar = secaoCategorias.dataset.podeEditar === "sim";
-const estado = { emEdicao: null, novoNome: "" };
+const podeExcluir = secaoCategorias.dataset.podeExcluir === "sim";
+const estado = { emEdicao: null, novoNome: "", emExclusao: null };
 
 function criarCelula(texto, classe) {
   const celula = document.createElement("td");
@@ -33,12 +37,24 @@ function criarBotaoEditar(categoria) {
   return botao;
 }
 
+function criarBotaoExcluir(categoria) {
+  const botao = document.createElement("button");
+  botao.type = "button";
+  botao.textContent = "Excluir";
+  botao.className = "botao-pequeno botao-secundario";
+  botao.dataset.categoriaId = categoria.id;
+  botao.setAttribute("aria-label", `Excluir a categoria ${categoria.nome}`);
+  botao.addEventListener("click", () => abrirExclusao(categoria));
+  return botao;
+}
+
 function criarLinhaCategoria(categoria) {
   const linha = document.createElement("tr");
   linha.append(criarCelula(categoria.nome), criarCelula(categoria.total_materiais, "num"));
-  if (podeEditar) {
+  if (podeEditar || podeExcluir) {
     const acoes = criarCelula("", "acoes");
-    acoes.append(criarBotaoEditar(categoria));
+    if (podeEditar) acoes.append(criarBotaoEditar(categoria));
+    if (podeExcluir) acoes.append(criarBotaoExcluir(categoria));
     linha.append(acoes);
   }
   return linha;
@@ -166,6 +182,28 @@ function voltarParaEdicao() {
   formEdicao.elements.nome.focus();
 }
 
+function abrirExclusao(categoria) {
+  estado.emExclusao = categoria;
+  textoExclusao.textContent =
+    `Excluir a categoria "${categoria.nome}"? Ela deixa de aparecer no sistema ` +
+    "e o nome poderá ser usado por uma nova categoria.";
+  dialogoExclusao.showModal();
+}
+
+// O servidor decide: com materiais ativos ele recusa (409) e a mensagem vem pronta.
+async function confirmarExclusao() {
+  const categoria = estado.emExclusao;
+  try {
+    await requisitar(`/categorias/${categoria.id}`, { method: "DELETE" });
+    dialogoExclusao.close();
+    await carregarCategorias(selectCategoria.value);
+    mostrarMensagem(mensagem, `Categoria "${categoria.nome}" excluída.`, "sucesso");
+  } catch (erro) {
+    dialogoExclusao.close();
+    mostrarMensagem(mensagem, erro.message, "erro");
+  }
+}
+
 formMaterial.addEventListener("submit", cadastrarMaterial);
 formCategoria.addEventListener("submit", criarCategoria);
 formEdicao.addEventListener("submit", salvarEdicao);
@@ -174,4 +212,8 @@ document
   .addEventListener("click", () => dialogoEdicao.close());
 document.getElementById("botao-confirmar-edicao").addEventListener("click", confirmarEdicao);
 document.getElementById("botao-voltar-edicao").addEventListener("click", voltarParaEdicao);
+document.getElementById("botao-confirmar-exclusao-categoria").addEventListener("click", confirmarExclusao);
+document
+  .getElementById("botao-cancelar-exclusao-categoria")
+  .addEventListener("click", () => dialogoExclusao.close());
 carregarCategorias().catch((erro) => mostrarMensagem(mensagem, erro.message, "erro"));

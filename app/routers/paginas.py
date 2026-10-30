@@ -25,6 +25,14 @@ class ItemMenu(NamedTuple):
 
 
 # O menu e o acesso às telas derivam da mesma matriz de permissões da API.
+# Quem faz qualquer uma destas ações abre a tela Cadastro.
+ACOES_DO_CADASTRO = (
+    Acao.CADASTRAR_MATERIAL,
+    Acao.CRIAR_CATEGORIA,
+    Acao.EDITAR_CATEGORIA,
+    Acao.EXCLUIR_CATEGORIA,
+)
+
 ITENS_MENU = (
     ItemMenu("pesquisa", "Pesquisa", "/pesquisa", (Acao.CONSULTAR_ESTOQUE,)),
     # A página fica em /estoque/saldos porque /saldos é a API.
@@ -34,7 +42,7 @@ ITENS_MENU = (
         "cadastro",
         "Cadastro",
         "/materiais/novo",
-        (Acao.CADASTRAR_MATERIAL, Acao.CRIAR_CATEGORIA, Acao.EDITAR_CATEGORIA),
+        ACOES_DO_CADASTRO,
     ),
     ItemMenu("usuarios", "Usuários", "/gestao/usuarios", (Acao.GERIR_USUARIOS,)),
 )
@@ -91,14 +99,7 @@ async def tratar_acesso_negado(request: Request, erro: AcessoNegadoError) -> Res
 
 PodePesquisar = Annotated[Usuario, Depends(acesso_pagina(Acao.CONSULTAR_ESTOQUE))]
 PodeMovimentar = Annotated[Usuario, Depends(acesso_pagina(Acao.MOVIMENTAR))]
-PodeCadastrar = Annotated[
-    Usuario,
-    Depends(
-        acesso_pagina(
-            Acao.CADASTRAR_MATERIAL, Acao.CRIAR_CATEGORIA, Acao.EDITAR_CATEGORIA
-        )
-    ),
-]
+PodeCadastrar = Annotated[Usuario, Depends(acesso_pagina(*ACOES_DO_CADASTRO))]
 PodeGerirUsuarios = Annotated[Usuario, Depends(acesso_pagina(Acao.GERIR_USUARIOS))]
 
 
@@ -150,6 +151,7 @@ def cadastro(request: Request, usuario: PodeCadastrar) -> Response:
         usuario,
         "cadastro",
         pode_editar_categoria=perfil_pode(usuario.perfil, Acao.EDITAR_CATEGORIA),
+        pode_excluir_categoria=perfil_pode(usuario.perfil, Acao.EXCLUIR_CATEGORIA),
     )
 
 

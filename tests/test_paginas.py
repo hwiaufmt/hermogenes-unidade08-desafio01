@@ -313,6 +313,53 @@ def test_ca09_sem_a_permissao_de_editar_a_tela_nao_oferece_a_edicao(
     assert '<th scope="col">Ações</th>' not in html
 
 
+def test_ca16_estoquista_ve_a_exclusao_de_categorias_e_o_dialogo_na_tela(
+    entrar_como: Callable[[str], TestClient],
+) -> None:
+    html = entrar_como(ESTOQUISTA).get("/materiais/novo").text
+
+    assert 'data-pode-excluir="sim"' in html
+    assert 'id="dialogo-exclusao-categoria"' in html
+    assert 'id="texto-exclusao-categoria"' in html
+    assert 'id="botao-confirmar-exclusao-categoria"' in html
+    # O foco inicial da janela fica em Cancelar, não no botão de excluir.
+    assert (
+        'id="botao-cancelar-exclusao-categoria" class="botao-secundario" autofocus'
+        in html
+    )
+
+
+def test_ca16_sem_a_permissao_de_excluir_a_tela_nao_oferece_a_exclusao(
+    entrar_como: Callable[[str], TestClient], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        permissoes,
+        "PERMISSOES",
+        {ESTOQUISTA: frozenset({Acao.CADASTRAR_MATERIAL, Acao.EDITAR_CATEGORIA})},
+    )
+
+    html = entrar_como(ESTOQUISTA).get("/materiais/novo").text
+
+    assert 'data-pode-excluir="nao"' in html
+    assert 'data-pode-editar="sim"' in html
+    assert '<th scope="col">Ações</th>' in html
+
+
+def test_ca16_quem_so_pode_excluir_categoria_abre_a_pagina_de_cadastro(
+    entrar_como: Callable[[str], TestClient], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        permissoes, "PERMISSOES", {ESTOQUISTA: frozenset({Acao.EXCLUIR_CATEGORIA})}
+    )
+    client = entrar_como(ESTOQUISTA)
+
+    resposta = client.get("/materiais/novo")
+
+    assert resposta.status_code == 200
+    assert 'data-pode-excluir="sim"' in resposta.text
+    assert '<th scope="col">Ações</th>' in resposta.text
+
+
 def test_ca09_quem_so_pode_editar_categoria_abre_a_pagina_de_cadastro(
     entrar_como: Callable[[str], TestClient], monkeypatch: pytest.MonkeyPatch
 ) -> None:
