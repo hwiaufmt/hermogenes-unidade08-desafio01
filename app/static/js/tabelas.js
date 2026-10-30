@@ -1,3 +1,17 @@
+// A API devolve o status como "Disponível" ou "Indisponível". Nas telas, a
+// disponibilidade aparece como "Sim" ou "Não": é só o rótulo, o status vem pronto.
+export function rotuloDisponivel(status) {
+  return status === "Disponível" ? "Sim" : "Não";
+}
+
+export function criarSeloDisponivel(status) {
+  const selo = document.createElement("span");
+  selo.className = "selo";
+  selo.dataset.status = status;
+  selo.textContent = rotuloDisponivel(status);
+  return selo;
+}
+
 export function criarCelula(texto, classe) {
   const celula = document.createElement("td");
   celula.textContent = texto;
@@ -5,13 +19,9 @@ export function criarCelula(texto, classe) {
   return celula;
 }
 
-export function criarCelulaStatus(status) {
-  const selo = document.createElement("span");
-  selo.className = "selo";
-  selo.dataset.status = status;
-  selo.textContent = status;
+export function criarCelulaDisponivel(status) {
   const celula = document.createElement("td");
-  celula.append(selo);
+  celula.append(criarSeloDisponivel(status));
   return celula;
 }
 

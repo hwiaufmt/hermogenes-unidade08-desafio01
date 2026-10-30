@@ -17,18 +17,29 @@
     </select>
   </div>
   <div class="campo">
-    <label for="filtro-status">Status</label>
-    <select id="filtro-status">
+    <label for="filtro-disponivel">Disponível</label>
+    <select id="filtro-disponivel">
       <option value="">Todos</option>
-      <option value="Disponível">Disponível</option>
-      <option value="Indisponível">Indisponível</option>
+      <option value="Disponível">Sim</option>
+      <option value="Indisponível">Não</option>
     </select>
   </div>
 </form>
 
 <p id="resumo" class="resumo" role="status" aria-live="polite"></p>
-<div id="grupos"></div>
+<div id="grupos" data-pode-excluir="{{ 'sim' if pode_excluir_material else 'nao' }}"></div>
 <p id="vazio" hidden></p>
+
+<dialog id="dialogo-exclusao" aria-labelledby="titulo-dialogo-exclusao" aria-describedby="texto-exclusao">
+  <div class="form-vertical">
+    <h2 id="titulo-dialogo-exclusao">Excluir material</h2>
+    <p id="texto-exclusao"></p>
+    <div class="acoes-form">
+      <button type="button" id="botao-confirmar-exclusao" class="botao-perigo">Excluir material</button>
+      <button type="button" id="botao-cancelar-exclusao" class="botao-secundario" autofocus>Cancelar</button>
+    </div>
+  </div>
+</dialog>
 {% endblock %}
 
 {% block scripts %}

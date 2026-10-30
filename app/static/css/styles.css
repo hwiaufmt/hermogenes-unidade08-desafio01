@@ -220,6 +220,23 @@ button:hover {
   background: var(--cor-fundo);
 }
 
+.botao-perigo {
+  background: var(--cor-erro);
+  color: #fff;
+}
+
+.botao-perigo:hover {
+  background: #7a1616;
+}
+
+tr[data-inicio-grupo="true"] td {
+  border-top: 2px solid var(--cor-borda-campo);
+}
+
+tbody tr:first-child[data-inicio-grupo="true"] td {
+  border-top: 0;
+}
+
 .botao-pequeno {
   min-height: var(--alvo-toque);
   padding: 0.3rem 0.7rem;
@@ -284,9 +301,10 @@ td.acoes button {
   color: var(--cor-erro);
 }
 
-#detalhe-saldos h3 {
-  margin: var(--espaco) 0 0.5rem;
-  font-size: 1.05rem;
+.dica-tabela {
+  margin: 0 0 0.5rem;
+  color: var(--cor-suave);
+  font-size: 0.9rem;
 }
 
 dialog {

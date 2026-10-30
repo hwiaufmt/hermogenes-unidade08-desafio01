@@ -155,12 +155,49 @@ def test_pagina_pesquisa_renderiza_com_filtros(client: TestClient) -> None:
 
     assert 'for="filtro-busca"' in html
     assert 'for="filtro-categoria"' in html
-    assert 'for="filtro-status"' in html
+    assert 'for="filtro-disponivel"' in html
     assert 'id="grupos"' in html
     assert "js/pesquisa.js" in html
 
 
-def test_ca11_pagina_saldos_renderiza_com_totais_resumo_e_detalhe(
+def test_ca14_filtro_de_disponibilidade_da_pesquisa_mostra_sim_e_nao(
+    client: TestClient,
+) -> None:
+    html = client.get("/pesquisa").text
+
+    # O valor continua sendo o status da API; o rótulo na tela é Sim/Não.
+    assert '<option value="Disponível">Sim</option>' in html
+    assert '<option value="Indisponível">Não</option>' in html
+    assert "Indisponível</option>" not in html.replace(
+        '<option value="Indisponível">Não</option>', ""
+    )
+    assert 'for="filtro-status"' not in html
+
+
+def test_pesquisa_tem_dialogo_de_exclusao_e_marca_quem_pode_excluir(
+    client: TestClient,
+) -> None:
+    html = client.get("/pesquisa").text
+
+    assert 'id="dialogo-exclusao"' in html
+    assert 'id="texto-exclusao"' in html
+    assert 'id="botao-confirmar-exclusao"' in html
+    assert 'data-pode-excluir="sim"' in html
+    # O foco inicial da janela fica em Cancelar, não no botão de excluir.
+    assert 'id="botao-cancelar-exclusao" class="botao-secundario" autofocus' in html
+
+
+def test_ca12_so_o_estoquista_ve_o_botao_de_excluir_na_pesquisa(
+    entrar_como: Callable[[str], TestClient],
+) -> None:
+    estoquista = entrar_como(ESTOQUISTA).get("/pesquisa").text
+    operador = entrar_como(OPERADOR).get("/pesquisa").text
+
+    assert 'data-pode-excluir="sim"' in estoquista
+    assert 'data-pode-excluir="nao"' in operador
+
+
+def test_ca13_pagina_saldos_tem_totais_e_a_tabela_por_material(
     client: TestClient,
 ) -> None:
     html = client.get("/estoque/saldos").text
@@ -169,12 +206,38 @@ def test_ca11_pagina_saldos_renderiza_com_totais_resumo_e_detalhe(
         'id="total-materiais"',
         'id="total-unidades"',
         'id="total-indisponiveis"',
-        'id="resumo-categorias"',
-        'id="detalhe-saldos"',
+        'id="tabela-saldos"',
+        'id="corpo-saldos"',
         'id="botao-atualizar"',
     ):
         assert elemento in html
     assert "js/saldos.js" in html
+
+
+def test_ca13_tabela_de_saldos_tem_as_colunas_na_ordem_pedida(
+    client: TestClient,
+) -> None:
+    html = client.get("/estoque/saldos").text
+
+    cabecalho = html[html.index("<thead>") : html.index("</thead>")]
+    ordem = [
+        cabecalho.index(">Material<"),
+        cabecalho.index(">Quantidade<"),
+        cabecalho.index(">Categoria<"),
+        cabecalho.index(">Disponível<"),
+    ]
+    assert ordem == sorted(ordem)
+    assert cabecalho.count("<th ") == 4
+
+
+def test_ca13_saldos_nao_tem_mais_o_resumo_por_categoria_nem_o_detalhe(
+    client: TestClient,
+) -> None:
+    html = client.get("/estoque/saldos").text
+
+    assert 'id="resumo-categorias"' not in html
+    assert 'id="detalhe-saldos"' not in html
+    assert "Resumo por categoria" not in html
 
 
 def test_ca11_pagina_de_saldos_nao_colide_com_a_api(client: TestClient) -> None:
@@ -192,6 +255,15 @@ def test_pagina_movimentar_renderiza(client: TestClient) -> None:
     assert 'for="movimento-material"' in html
     assert 'for="movimento-quantidade"' in html
     assert "js/movimentar.js" in html
+
+
+def test_ca14_painel_de_saldo_da_movimentacao_pergunta_se_esta_disponivel(
+    client: TestClient,
+) -> None:
+    html = client.get("/movimentar").text
+
+    assert "<dt>Disponível</dt>" in html
+    assert "<dt>Status</dt>" not in html
 
 
 def test_pagina_cadastro_renderiza_e_nao_conflita_com_material_por_id(

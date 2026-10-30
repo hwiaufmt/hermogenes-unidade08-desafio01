@@ -1,4 +1,5 @@
 import { enviarJson, mostrarMensagem, requisitar } from "./api.js";
+import { rotuloDisponivel } from "./tabelas.js";
 
 const mensagem = document.getElementById("mensagem");
 const form = document.getElementById("form-movimento");
@@ -19,7 +20,7 @@ function renderizarMateriais(materiais, selecionadoId) {
 function renderizarSaldo(material) {
   saldoNome.textContent = material.nome;
   saldoQuantidade.textContent = material.quantidade;
-  saldoStatus.textContent = material.status;
+  saldoStatus.textContent = rotuloDisponivel(material.status);
   saldoStatus.dataset.status = material.status;
   painel.hidden = false;
 }
@@ -38,7 +39,8 @@ async function mostrarSaldoSelecionado() {
 
 function textoSucesso(tipo, quantidade, material) {
   const acao = tipo === "entrada" ? "Entrada" : "Saída";
-  return `${acao} de ${quantidade} registrada. Saldo de "${material.nome}": ${material.quantidade} (${material.status}).`;
+  const disponivel = rotuloDisponivel(material.status);
+  return `${acao} de ${quantidade} registrada. Saldo de "${material.nome}": ${material.quantidade} (disponível: ${disponivel}).`;
 }
 
 async function registrarMovimento(evento) {

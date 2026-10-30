@@ -123,7 +123,13 @@ def login(request: Request, db: DbSessao) -> Response:
 
 @router.get("/pesquisa", response_class=HTMLResponse)
 def pesquisa(request: Request, usuario: PodePesquisar) -> Response:
-    return _pagina(request, "pesquisa.html", usuario, "pesquisa")
+    return _pagina(
+        request,
+        "pesquisa.html",
+        usuario,
+        "pesquisa",
+        pode_excluir_material=perfil_pode(usuario.perfil, Acao.EXCLUIR_MATERIAL),
+    )
 
 
 @router.get("/estoque/saldos", response_class=HTMLResponse)

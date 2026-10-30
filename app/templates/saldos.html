@@ -18,26 +18,22 @@
   </dl>
 </section>
 
-<section aria-labelledby="titulo-resumo-categorias">
-  <h2 id="titulo-resumo-categorias">Resumo por categoria</h2>
-  <div class="tabela-rolavel" tabindex="0" role="region" aria-labelledby="titulo-resumo-categorias">
-    <table>
-      <thead>
-        <tr>
-          <th scope="col">Categoria</th>
-          <th scope="col" class="num">Materiais</th>
-          <th scope="col" class="num">Unidades</th>
-          <th scope="col" class="num">Indisponíveis</th>
-        </tr>
-      </thead>
-      <tbody id="resumo-categorias"></tbody>
-    </table>
-  </div>
-</section>
-
 <section aria-labelledby="titulo-saldo-material">
   <h2 id="titulo-saldo-material">Saldo por material</h2>
-  <div id="detalhe-saldos"></div>
+  <p class="dica-tabela">Agrupado por categoria, em ordem alfabética.</p>
+  <div class="tabela-rolavel" tabindex="0" role="region" aria-labelledby="titulo-saldo-material">
+    <table id="tabela-saldos">
+      <thead>
+        <tr>
+          <th scope="col">Material</th>
+          <th scope="col" class="num">Quantidade</th>
+          <th scope="col">Categoria</th>
+          <th scope="col">Disponível</th>
+        </tr>
+      </thead>
+      <tbody id="corpo-saldos"></tbody>
+    </table>
+  </div>
   <p id="vazio" hidden>Nenhum material cadastrado.</p>
 </section>
 {% endblock %}
