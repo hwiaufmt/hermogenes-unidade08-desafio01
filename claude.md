@@ -198,7 +198,7 @@ Códigos de erro: `401` sem login; `403` perfil sem permissão; `404` material/c
 18. **Migração leve:** ao iniciar, `app/migracoes.py` confere e acrescenta as colunas novas que faltam (hoje `materiais.excluido_em`), com `ALTER TABLE ... ADD COLUMN`. Só **adiciona** colunas vazias, nunca altera nem apaga dados, e é idempotente. **Outras mudanças de estrutura** (alterar ou remover colunas, mudar índices) continuam exigindo recriar o banco ou alterar a tabela à mão. Com `--reload`, o servidor aplica a migração assim que o código novo é salvo.
 19. Nas telas, a disponibilidade é rotulada **Sim/Não**; a tradução do texto da API (`"Disponível"` → Sim; demais → Não) é só um rótulo, feito em um único lugar do JavaScript (`rotuloDisponivel`). O JavaScript não calcula o status.
 
-## 7. Plano em sprints (1 a 8 concluídas)
+## 7. Plano em sprints (1 a 8 concluídas; 9 planejada)
 
 ### Sprint 1 — Fundação e cadastro
 - Setup do projeto (FastAPI, SQLAlchemy, pytest, ruff, estrutura de pastas)
@@ -266,6 +266,15 @@ Três mudanças pedidas pelo dono do projeto: (1) excluir materiais de forma **l
 - Fora desta sprint: **restaurar** um material excluído (a exclusão fica só no banco) e excluir categorias.
 - **Pronto quando:** o estoquista exclui um material pela tela (com confirmação quando há saldo) e ele deixa de aparecer em todo o sistema, sem apagar o histórico; o banco já existente é atualizado sem perda de dados; a tela Saldos mostra a tabela nas colunas pedidas, agrupada por categoria em ordem alfabética; e a disponibilidade aparece como Sim ou Não nas telas. **Verificado:** CA-12, CA-13 e CA-14 passam (testes `test_ca12_*`, `test_ca13_*` e `test_ca14_*`), a migração foi aplicada sem perda ao `estoque.db` em uso, e as telas foram conferidas no navegador em desktop e celular.
 
+### Sprint 9 — Exclusão lógica de categorias (planejada; pedido explícito, amplia o escopo)
+Decisões do dono do projeto: (a) categoria **com materiais ativos não pode ser excluída** (bloqueio com `409` informando quantos); (b) só o **estoquista** exclui; (c) o **nome é liberado** para nova categoria; (d) **sem restauração** pela interface.
+1. **Service e API.** Nova coluna `excluido_em` em `categorias`, pela migração leve (`COLUNAS_NOVAS`). Nova ação `EXCLUIR_CATEGORIA` (estoquista). `DELETE /categorias/{id}`: inexistente ou já excluída → `404`; com materiais ativos → `409` com `materiais` (inteiro) e nada gravado; sem materiais, marca `excluido_em`. **Liberar o nome:** o `UNIQUE` de `categorias.nome` não sai com `ALTER TABLE`; por isso, ao excluir, o nome guardado vira `"<nome> [excluída #id]"` (migração leve, sem recriar tabela). A unicidade por `casefold` passa a olhar **só categorias ativas**. Categoria excluída some de `GET /categorias`, `GET /saldos`, da validação em `POST /materiais` (→ `422`), do filtro `?categoria_id=` (→ `404`), da edição (→ `404`) e do seed (que não recria categorias do seed excluídas só por faltarem: ver dúvida abaixo).
+2. **Telas.** Na lista de categorias do Cadastro, botão **Excluir** (só com a permissão) e `<dialog>` de confirmação; com materiais, a tela mostra a mensagem do `409`.
+3. **Fechamento:** testes CA-15 e CA-16, documentação (README, `docs/`, visão do produto) e este arquivo.
+- **Dúvida a resolver na parte 1:** o seed recria Papelaria, Escrita e Informática se não existirem; como o nome foi liberado, uma categoria do seed excluída **voltaria no próximo início**. Proposta: o seed só roda quando a tabela está vazia (inclusive de excluídas).
+- Fora desta sprint: restaurar categoria excluída.
+- **Pronto quando:** o estoquista exclui uma categoria sem materiais pela tela; com materiais, é bloqueado e vê quantos; a categoria some de todo o sistema e o nome pode ser reutilizado; o banco existente é migrado sem perda.
+
 ## 8. Padrões de código
 
 ### Python
@@ -292,7 +301,7 @@ Três mudanças pedidas pelo dono do projeto: (1) excluir materiais de forma **l
 
 Aprovação de requisições, fornecedores e notas fiscais, relatórios e dashboards, notificações, integrações (ERP/e-mail), multi-filial, edição/exclusão de movimentações, histórico em tela, app mobile nativo, exportação.
 
-Excluir categorias (a edição do nome é a Sprint 5). Saldo em data passada e extrato de movimentações por material (a Sprint 6 trata só do saldo atual). Restaurar um material excluído (a exclusão lógica da Sprint 8 só marca o registro no banco).
+Excluir categorias (a edição do nome é a Sprint 5; a exclusão **lógica** é a Sprint 9, ainda não implementada) e restaurar categoria excluída. Saldo em data passada e extrato de movimentações por material (a Sprint 6 trata só do saldo atual). Restaurar um material excluído (a exclusão lógica da Sprint 8 só marca o registro no banco).
 
 Dentro de usuários e acesso, também fora do escopo por ora: recuperação/troca de senha pelo próprio usuário, limite de tentativas de login, login por provedor externo (SSO), edição de CPF e exclusão definitiva de usuários, e registrar quem fez cada movimentação.
 
