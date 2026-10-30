@@ -7,6 +7,8 @@ Cada `Acao` abaixo corresponde a um conjunto de rotas e telas:
 - CRIAR_CATEGORIA: POST /categorias; tela Cadastro.
 - EDITAR_CATEGORIA: PUT /categorias/{id} (altera o nome; com materiais exige
   confirmação); tela Cadastro.
+- EXCLUIR_CATEGORIA: DELETE /categorias/{id} (exclusão lógica; só categoria
+  sem materiais); botão Excluir da tela Cadastro.
 - CADASTRAR_MATERIAL: POST /materiais (inclui estoque inicial e mínimo);
   tela Cadastro.
 - EXCLUIR_MATERIAL: DELETE /materiais/{id} (exclusão lógica; com saldo exige
@@ -33,6 +35,7 @@ class Acao(StrEnum):
     GERIR_USUARIOS = "gerir_usuarios"
     CRIAR_CATEGORIA = "criar_categoria"
     EDITAR_CATEGORIA = "editar_categoria"
+    EXCLUIR_CATEGORIA = "excluir_categoria"
     CADASTRAR_MATERIAL = "cadastrar_material"
     EXCLUIR_MATERIAL = "excluir_material"
     MOVIMENTAR = "movimentar"
@@ -41,7 +44,7 @@ class Acao(StrEnum):
 
 # Quem pode o quê:
 #   - Estoquista: informa valores de estoque (estoque inicial e mínimo no
-#     cadastro), cadastra e exclui materiais, cria e edita categorias, e
+#     cadastro), cadastra e exclui materiais, cria, edita e exclui categorias, e
 #     consulta o estoque.
 #   - Operador: movimenta materiais e consulta o estoque (tela de pesquisa).
 #   - Administrador: apenas mantém os usuários.
@@ -54,6 +57,7 @@ PERMISSOES: dict[str, frozenset[Acao]] = {
         {
             Acao.CRIAR_CATEGORIA,
             Acao.EDITAR_CATEGORIA,
+            Acao.EXCLUIR_CATEGORIA,
             Acao.CADASTRAR_MATERIAL,
             Acao.EXCLUIR_MATERIAL,
             Acao.CONSULTAR_ESTOQUE,

@@ -46,19 +46,24 @@ def banco_antigo() -> Engine:
     return engine
 
 
-def _colunas(engine: Engine) -> set[str]:
-    return {c["name"] for c in inspect(engine).get_columns("materiais")}
+COLUNAS_ACRESCENTADAS = ["materiais.excluido_em", "categorias.excluido_em"]
+
+
+def _colunas(engine: Engine, tabela: str = "materiais") -> set[str]:
+    return {c["name"] for c in inspect(engine).get_columns(tabela)}
 
 
 def test_banco_antigo_nao_tem_a_coluna_e_a_migracao_a_cria(
     banco_antigo: Engine,
 ) -> None:
     assert "excluido_em" not in _colunas(banco_antigo)
+    assert "excluido_em" not in _colunas(banco_antigo, "categorias")
 
     aplicadas = migrar(banco_antigo)
 
-    assert aplicadas == ["materiais.excluido_em"]
+    assert aplicadas == COLUNAS_ACRESCENTADAS
     assert "excluido_em" in _colunas(banco_antigo)
+    assert "excluido_em" in _colunas(banco_antigo, "categorias")
 
 
 def test_migracao_preserva_os_dados_existentes(banco_antigo: Engine) -> None:
@@ -89,7 +94,7 @@ def test_migracao_e_idempotente(banco_antigo: Engine) -> None:
     primeira = migrar(banco_antigo)
     segunda = migrar(banco_antigo)
 
-    assert primeira == ["materiais.excluido_em"]
+    assert primeira == COLUNAS_ACRESCENTADAS
     assert segunda == []
     assert "excluido_em" in _colunas(banco_antigo)
 
@@ -101,7 +106,19 @@ def test_banco_novo_ja_nasce_com_a_coluna_e_a_migracao_nao_faz_nada() -> None:
     Base.metadata.create_all(engine)
 
     assert "excluido_em" in _colunas(engine)
+    assert "excluido_em" in _colunas(engine, "categorias")
     assert migrar(engine) == []
+
+
+def test_migracao_preserva_a_categoria_existente_e_ela_continua_ativa(
+    banco_antigo: Engine,
+) -> None:
+    from app.services.estoque import listar_categorias
+
+    migrar(banco_antigo)
+
+    with sessionmaker(bind=banco_antigo)() as db:
+        assert [c.nome for c in listar_categorias(db)] == ["Lapiseira"]
 
 
 def test_exclusao_logica_funciona_em_banco_migrado(banco_antigo: Engine) -> None:

@@ -25,6 +25,7 @@ LER_CATEGORIAS = exigir(
     Acao.CADASTRAR_MATERIAL,
     Acao.CRIAR_CATEGORIA,
     Acao.EDITAR_CATEGORIA,
+    Acao.EXCLUIR_CATEGORIA,
 )
 
 
@@ -68,4 +69,21 @@ def atualizar(categoria_id: int, dados: CategoriaAtualizar, db: DbSessao):
         return JSONResponse(
             status_code=status.HTTP_409_CONFLICT,
             content={"detail": str(erro), "afetados": erro.afetados},
+        )
+
+
+@router.delete(
+    "/{categoria_id:int}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(exigir(Acao.EXCLUIR_CATEGORIA))],
+)
+def excluir(categoria_id: int, db: DbSessao):
+    try:
+        estoque.excluir_categoria(db, categoria_id)
+    except estoque.CategoriaInexistenteError as erro:
+        raise HTTPException(status_code=404, detail=str(erro)) from erro
+    except estoque.CategoriaComMateriaisError as erro:
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content={"detail": str(erro), "materiais": erro.materiais},
         )

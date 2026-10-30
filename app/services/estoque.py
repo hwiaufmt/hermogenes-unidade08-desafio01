@@ -68,6 +68,18 @@ class ConfirmacaoDeExclusaoError(Exception):
         )
 
 
+class CategoriaComMateriaisError(Exception):
+    """A categoria ainda tem materiais ativos e não pode ser excluída."""
+
+    def __init__(self, nome: str, materiais: int) -> None:
+        self.materiais = materiais
+        itens = _plural(materiais, "material", "materiais")
+        super().__init__(
+            f"A categoria '{nome}' tem {materiais} {itens}; "
+            "exclua os materiais antes de excluir a categoria."
+        )
+
+
 class ResumoCategoria(NamedTuple):
     id: int
     nome: str
@@ -79,7 +91,20 @@ def _plural(quantidade: int, singular: str, plural: str) -> str:
 
 
 def listar_categorias(db: Session) -> list[Categoria]:
-    return list(db.scalars(select(Categoria).order_by(Categoria.nome)))
+    """Categorias ativas (as excluídas logicamente não aparecem)."""
+    consulta = (
+        select(Categoria)
+        .where(Categoria.excluido_em.is_(None))
+        .order_by(Categoria.nome)
+    )
+    return list(db.scalars(consulta))
+
+
+def _obter_categoria_ativa(db: Session, categoria_id: int) -> Categoria:
+    categoria = db.get(Categoria, categoria_id)
+    if categoria is None or categoria.excluido_em is not None:
+        raise CategoriaInexistenteError(categoria_id)
+    return categoria
 
 
 def listar_categorias_com_totais(db: Session) -> list[ResumoCategoria]:
@@ -89,6 +114,7 @@ def listar_categorias_com_totais(db: Session) -> list[ResumoCategoria]:
             Material,
             (Material.categoria_id == Categoria.id) & Material.excluido_em.is_(None),
         )
+        .where(Categoria.excluido_em.is_(None))
         .group_by(Categoria.id, Categoria.nome)
         .order_by(Categoria.nome)
     )
@@ -168,9 +194,7 @@ def atualizar_categoria(
     ela, informa quantos registros seriam afetados (CA-10). Nome repetido é
     recusado antes de pedir a confirmação.
     """
-    categoria = db.get(Categoria, categoria_id)
-    if categoria is None:
-        raise CategoriaInexistenteError(categoria_id)
+    categoria = _obter_categoria_ativa(db, categoria_id)
     total = _contar_materiais_da_categoria(db, categoria_id)
     if nome == categoria.nome:
         return ResumoCategoria(categoria.id, categoria.nome, total)
@@ -186,6 +210,21 @@ def atualizar_categoria(
         db.rollback()
         raise CategoriaDuplicadaError(nome) from None
     return ResumoCategoria(categoria.id, categoria.nome, total)
+
+
+def excluir_categoria(db: Session, categoria_id: int) -> None:
+    """Exclusão **lógica** de categoria (CA-15): só sem materiais ativos.
+
+    O `UNIQUE` de `categorias.nome` não sai com `ALTER TABLE`; para liberar o nome
+    à próxima categoria, o nome guardado ganha o sufixo "[excluída #id]".
+    """
+    categoria = _obter_categoria_ativa(db, categoria_id)
+    total = _contar_materiais_da_categoria(db, categoria_id)
+    if total > 0:
+        raise CategoriaComMateriaisError(categoria.nome, total)
+    categoria.nome = f"{categoria.nome} [excluída #{categoria.id}]"
+    categoria.excluido_em = datetime.now(UTC)
+    db.commit()
 
 
 def _categoria_com_nome(
@@ -232,8 +271,7 @@ def listar_materiais(
         .order_by(Material.nome)
     )
     if categoria_id is not None:
-        if db.get(Categoria, categoria_id) is None:
-            raise CategoriaInexistenteError(categoria_id)
+        _obter_categoria_ativa(db, categoria_id)
         consulta = consulta.where(Material.categoria_id == categoria_id)
     if busca and busca.strip():
         termo = busca.strip().lower()
@@ -254,9 +292,7 @@ def criar_material(
     quantidade: int = 0,
     estoque_minimo: int = 0,
 ) -> Material:
-    categoria = db.get(Categoria, categoria_id)
-    if categoria is None:
-        raise CategoriaInexistenteError(categoria_id)
+    categoria = _obter_categoria_ativa(db, categoria_id)
     material = Material(
         nome=nome,
         categoria=categoria,
@@ -348,8 +384,10 @@ def registrar_saida(db: Session, material_id: int, quantidade: int) -> Material:
 
 
 def semear_categorias(db: Session) -> None:
-    existentes = {c.nome.casefold() for c in listar_categorias(db)}
+    """Cria as categorias iniciais **só se a tabela estiver vazia** (contando as
+    excluídas), para uma categoria do seed excluída não voltar ao reiniciar."""
+    if db.scalar(select(func.count(Categoria.id))):
+        return
     for nome in CATEGORIAS_INICIAIS:
-        if nome.casefold() not in existentes:
-            db.add(Categoria(nome=nome))
+        db.add(Categoria(nome=nome))
     db.commit()

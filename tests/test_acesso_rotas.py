@@ -39,6 +39,7 @@ ROTAS = [
     ("GET", "/categorias", None, {ESTOQUISTA, OPERADOR}),
     ("POST", "/categorias", {"nome": "Limpeza"}, {ESTOQUISTA}),
     ("PUT", "/categorias/1", {"nome": "Outro nome"}, {ESTOQUISTA}),
+    ("DELETE", "/categorias/1", None, {ESTOQUISTA}),
     ("GET", "/materiais", None, {ESTOQUISTA, OPERADOR}),
     ("GET", "/materiais/1", None, {ESTOQUISTA, OPERADOR}),
     ("GET", "/saldos", None, {ESTOQUISTA, OPERADOR}),
@@ -70,6 +71,7 @@ def test_ca08_matriz_oficial_segue_as_regras_de_negocio() -> None:
         ESTOQUISTA: {
             Acao.CRIAR_CATEGORIA,
             Acao.EDITAR_CATEGORIA,
+            Acao.EXCLUIR_CATEGORIA,
             Acao.CADASTRAR_MATERIAL,
             Acao.EXCLUIR_MATERIAL,
             Acao.CONSULTAR_ESTOQUE,

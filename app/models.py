@@ -11,6 +11,8 @@ class Categoria(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     nome: Mapped[str] = mapped_column(String(100), unique=True)
+    # Exclusão lógica: data e hora (UTC) da exclusão; vazia = categoria ativa.
+    excluido_em: Mapped[datetime | None] = mapped_column(default=None)
 
 
 class Material(Base):

@@ -12,6 +12,7 @@ from sqlalchemy.engine import Engine
 COLUNAS_NOVAS = (
     # (tabela, coluna, tipo SQL)
     ("materiais", "excluido_em", "DATETIME"),
+    ("categorias", "excluido_em", "DATETIME"),
 )
 
 
