@@ -75,8 +75,8 @@ class CategoriaComMateriaisError(Exception):
         self.materiais = materiais
         itens = _plural(materiais, "material", "materiais")
         super().__init__(
-            f"A categoria '{nome}' tem {materiais} {itens}; "
-            "exclua os materiais antes de excluir a categoria."
+            f"A categoria '{nome}' tem {materiais} {itens} com saldo em estoque; "
+            "zere o saldo ou exclua esses materiais antes de excluir a categoria."
         )
 
 
@@ -213,17 +213,30 @@ def atualizar_categoria(
 
 
 def excluir_categoria(db: Session, categoria_id: int) -> None:
-    """Exclusão **lógica** de categoria (CA-15): só sem materiais ativos.
+    """Exclusão **lógica** de categoria (CA-15): bloqueada se algum material ativo
+    tiver saldo. Os materiais ativos **sem saldo** são excluídos junto.
 
     O `UNIQUE` de `categorias.nome` não sai com `ALTER TABLE`; para liberar o nome
     à próxima categoria, o nome guardado ganha o sufixo "[excluída #id]".
     """
     categoria = _obter_categoria_ativa(db, categoria_id)
-    total = _contar_materiais_da_categoria(db, categoria_id)
-    if total > 0:
-        raise CategoriaComMateriaisError(categoria.nome, total)
+    com_saldo = db.scalar(
+        select(func.count(Material.id)).where(
+            Material.categoria_id == categoria_id,
+            Material.excluido_em.is_(None),
+            Material.quantidade > 0,
+        )
+    )
+    if com_saldo:
+        raise CategoriaComMateriaisError(categoria.nome, com_saldo)
+    agora = datetime.now(UTC)
+    db.execute(
+        update(Material)
+        .where(Material.categoria_id == categoria_id, Material.excluido_em.is_(None))
+        .values(excluido_em=agora)
+    )
     categoria.nome = f"{categoria.nome} [excluída #{categoria.id}]"
-    categoria.excluido_em = datetime.now(UTC)
+    categoria.excluido_em = agora
     db.commit()
 
 

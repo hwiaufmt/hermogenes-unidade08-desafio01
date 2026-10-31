@@ -99,7 +99,7 @@ Na mesma lista, o estoquista também vê o botão **Excluir**.
 1. Clique em **Excluir** na linha da categoria. Abre uma janela de confirmação (o foco já começa em **Cancelar**).
 2. Clique em **Excluir categoria** para confirmar, ou em **Cancelar** para desistir.
 
-**Só é possível excluir categoria sem materiais.** Se ela tem materiais, o sistema recusa e diz quantos, por exemplo: *"A categoria 'Escrita' tem 2 materiais; exclua os materiais antes de excluir a categoria."* Materiais já excluídos não contam.
+**Materiais sem saldo não impedem a exclusão: são excluídos junto com a categoria** (por exemplo, uma lapiseira cujas unidades acabaram por saídas). O aviso da janela já diz isso. **Se algum material tiver saldo**, o sistema recusa e diz quantos, por exemplo: *"A categoria 'Escrita' tem 2 materiais com saldo em estoque; zere o saldo ou exclua esses materiais antes de excluir a categoria."* Nesse caso nada é excluído, nem os materiais sem saldo. Materiais já excluídos não contam.
 
 A exclusão é **lógica**: a categoria some da lista, do formulário de material e dos Saldos, mas o registro continua no banco, e **não há como restaurar pela tela**. O **nome fica livre**: dá para criar outra categoria com o mesmo nome. As três categorias iniciais só voltam se o banco for recriado do zero; uma que você excluir não reaparece ao reiniciar.
 
@@ -163,7 +163,7 @@ Os erros aparecem em uma faixa no topo da tela, em português. As mais comuns:
 | A quantidade deve ser um número inteiro maior que zero. | usar 1 ou mais |
 | Saldo insuficiente de '...': disponível N, solicitado M. | pedir no máximo o saldo disponível, ou registrar uma entrada antes |
 | Já existe uma categoria chamada '...'. | usar a categoria existente (a mensagem mostra o nome já cadastrado, mesmo que você tenha digitado em outra caixa) |
-| A categoria '...' tem N material(is); exclua os materiais antes de excluir a categoria. | excluir (ou já ter excluído) os materiais da categoria e tentar de novo |
+| A categoria '...' tem N material(is) com saldo em estoque; zere o saldo ou exclua esses materiais antes de excluir a categoria. | registrar a saída das unidades restantes (ou excluir esses materiais na Pesquisa) e tentar de novo |
 | Esta categoria tem N materiais; a mudança de nome afetará N registros. Confirme para gravar. | não é um erro: é o aviso antes de gravar. Use **Confirmar alteração** para seguir ou **Voltar** para desistir |
 | CPF inválido. | conferir os 11 dígitos |
 | Já existe um usuário com o CPF .... | o usuário já está cadastrado (talvez inativo; reative-o) |

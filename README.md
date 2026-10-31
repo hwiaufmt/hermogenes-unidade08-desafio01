@@ -7,7 +7,7 @@ Este é um **MVP** que valida o ciclo *cadastrar → entrada → saída → cons
 ## Funcionalidades
 
 - **Categorias:** seed inicial (Papelaria, Escrita, Informática), criação de novas e **edição do nome** pela interface. O nome é único sem diferenciar maiúsculas de minúsculas ("Escrita" = "escrita"). Ao editar uma categoria que tem materiais, o sistema **informa quantos registros serão afetados** e só grava depois da confirmação.
-- **Exclusão lógica de categoria:** o estoquista exclui uma categoria **sem materiais** pela tela Cadastro; com materiais, o sistema bloqueia e informa quantos. A categoria some do sistema (o registro fica no banco) e o nome pode ser reutilizado. Não há restauração pela interface. As categorias iniciais só são criadas com o banco vazio, então uma inicial excluída não volta.
+- **Exclusão lógica de categoria:** o estoquista exclui uma categoria pela tela Cadastro. Se algum material dela tiver **saldo**, o sistema bloqueia e informa quantos; os materiais **sem saldo** são excluídos junto. A categoria some do sistema (o registro fica no banco) e o nome pode ser reutilizado. Não há restauração pela interface. As categorias iniciais só são criadas com o banco vazio, então uma inicial excluída não volta.
 - **Cadastro de material:** exige categoria válida; estoque inicial e estoque mínimo opcionais (padrão 0).
 - **Entrada e saída:** a entrada soma ao saldo; a saída subtrai e é **bloqueada** se o saldo for insuficiente.
 - **Status automático:** saldo 0 → **Indisponível**; qualquer outro → **Disponível**. Não há campo editável. Nas telas, a disponibilidade aparece como **Sim** ou **Não** (a API continua devolvendo `status`).
@@ -24,7 +24,7 @@ Este é um **MVP** que valida o ciclo *cadastrar → entrada → saída → cons
 |---|---|---|---|
 | Criar categoria | ✅ | | |
 | Editar categoria (com aviso de impacto) | ✅ | | |
-| Excluir categoria (exclusão lógica, só sem materiais) | ✅ | | |
+| Excluir categoria (exclusão lógica, bloqueada se algum material tiver saldo) | ✅ | | |
 | Cadastrar material (estoque inicial e mínimo) | ✅ | | |
 | Excluir material (exclusão lógica) | ✅ | | |
 | Pesquisar / consultar estoque e saldos | ✅ | ✅ | |
@@ -114,7 +114,7 @@ Sem login, as páginas redirecionam para `/login`. Sem permissão, mostram "Aces
 | `GET /categorias` | Lista as categorias, com `total_materiais` de cada uma | `401`, `403` |
 | `POST /categorias` | Cria categoria (`nome` único, **sem diferenciar maiúsculas de minúsculas**) | `422` vazio ou duplicado |
 | `PUT /categorias/{id}` | Altera o nome. Com materiais, exige `confirmar: true` | `404`, `422` vazio ou duplicado, `409` sem confirmação (informa `afetados`) |
-| `DELETE /categorias/{id}` | Exclusão lógica; só sem materiais ativos | `404` inexistente ou já excluída, `409` com materiais (informa `materiais`) |
+| `DELETE /categorias/{id}` | Exclusão lógica; bloqueada se algum material ativo tiver saldo; os sem saldo são excluídos junto | `404` inexistente ou já excluída, `409` com materiais com saldo (informa `materiais`) |
 | `GET /materiais` | Lista materiais; filtros `?categoria_id=`, `?q=`, `?status=` | `404` categoria inexistente, `422` status inválido |
 | `GET /materiais/{id}` | Consulta um material | `404` |
 | `DELETE /materiais/{id}?confirmar=true` | Exclusão lógica; com saldo maior que zero exige `confirmar=true` | `404`, `409` sem confirmação (informa `saldo`) |
@@ -136,7 +136,7 @@ Todas as rotas, exceto `POST /login`, exigem login (`401`) e a permissão do per
 - `estoque_minimo` é guardado e exibido; não dispara alerta no MVP.
 - O nome da categoria é único **sem diferenciar maiúsculas de minúsculas**; acentos diferenciam.
 - Alterar o nome de uma categoria com materiais exige confirmação: sem ela o servidor responde `409`, diz quantos registros seriam afetados e não grava.
-- Categoria com materiais ativos não pode ser excluída (`409`). Ao excluir, o nome guardado ganha o sufixo `[excluída #id]`, o que libera o nome original; a unicidade vale só entre categorias ativas.
+- Categoria com algum material **com saldo** não pode ser excluída (`409`); os materiais sem saldo são excluídos logicamente junto, com as movimentações preservadas. Ao excluir, o nome guardado ganha o sufixo `[excluída #id]`, o que libera o nome original; a unicidade vale só entre categorias ativas.
 - Material excluído (exclusão lógica) não aparece em nenhuma consulta, total ou movimentação (`404`); as movimentações antigas ficam guardadas. Com saldo maior que zero, a exclusão exige confirmação.
 - O **CPF** é único (com dígitos verificadores válidos); CPF repetido, mesmo com máscara diferente, é recusado.
 - A senha tem pelo menos 6 caracteres (protótipo; a senha padrão é `123456`) e é guardada só como hash `scrypt`.

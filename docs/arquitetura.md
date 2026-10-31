@@ -24,7 +24,7 @@ Navegador (HTML + JS)  ──fetch──►  routers  ──►  services  ─�
 
 - **`main.py`**: cria o app, registra o `SessionMiddleware`, os routers, os arquivos estáticos e os tratadores de erro. No startup cria as tabelas, aplica a migração leve (`migracoes.py`), aplica o seed das categorias e cria o administrador inicial.
 - **`routers/autenticacao.py`**: `POST /login`, `POST /logout` e `GET /me`.
-- **`routers/categorias.py`**: `GET /categorias` (com `total_materiais`), `POST /categorias` e `PUT /categorias/{id}` (edição com confirmação) e `DELETE /categorias/{id}` (exclusão lógica, só sem materiais).
+- **`routers/categorias.py`**: `GET /categorias` (com `total_materiais`), `POST /categorias` e `PUT /categorias/{id}` (edição com confirmação) e `DELETE /categorias/{id}` (exclusão lógica, bloqueada se algum material tiver saldo).
 - **`routers/materiais.py`**: `GET /materiais` (com `categoria_id`, `q` e `status`), `GET /materiais/{id}`, `POST /materiais` e `DELETE /materiais/{id}` (exclusão lógica, com `?confirmar=true` quando há saldo).
 - **`migracoes.py`**: `migrar(engine)` compara as colunas esperadas com as do banco e acrescenta as que faltam (`ALTER TABLE ... ADD COLUMN`). Só adiciona colunas vazias, é idempotente e devolve a lista do que aplicou, que o startup registra no log.
 - **`routers/movimentacoes.py`**: `POST /materiais/{id}/entrada` e `.../saida`.
@@ -141,7 +141,7 @@ Categorias sem materiais entram com zeros e lista vazia. Não há tabela nova, e
 | Categoria obrigatória e válida | Verificada em `criar_material` antes de gravar |
 | Categoria única, **sem diferenciar maiúsculas** | O service compara os nomes com `casefold` (o `lower()` do SQLite só trata ASCII) ao criar e editar, **olhando só categorias ativas**; acentos diferenciam. O índice único de `categorias.nome` continua diferenciando maiúsculas (a migração leve não altera índices) e vale como rede de segurança: `IntegrityError` também vira `CategoriaDuplicadaError` |
 | Quem altera o nome de uma categoria sabe o que será afetado | `atualizar_categoria` conta os materiais da categoria; com materiais e sem `confirmar`, levanta `ConfirmacaoNecessariaError` e **nada é gravado**. A checagem de nome repetido vem antes, para não pedir confirmação de algo que falharia |
-| Excluir categoria só sem materiais | `excluir_categoria` conta os materiais ativos; com algum, levanta `CategoriaComMateriaisError` (`409`, com `materiais`) e nada é gravado. Material já excluído não conta |
+| Excluir categoria só sem materiais com saldo | `excluir_categoria` conta os materiais ativos com `quantidade > 0`; com algum, levanta `CategoriaComMateriaisError` (`409`, com `materiais`) e nada é gravado. Sem nenhum, marca `excluido_em` nos materiais ativos restantes (todos sem saldo) e na categoria, **na mesma transação**; as movimentações ficam intactas. Material já excluído não conta |
 | Nome de categoria excluída liberado | O `UNIQUE` de `categorias.nome` não sai com `ALTER TABLE`; ao excluir, o nome guardado vira `"<nome> [excluída #id]"`, e `excluido_em` é preenchido |
 | Categoria inicial excluída não volta | `semear_categorias` só cria as iniciais com a tabela de categorias vazia (contando as excluídas) |
 | Quantidade inteira positiva | Validação no schema e, de novo, no service |
@@ -202,7 +202,7 @@ Fixtures principais:
 | `test_categorias.py` | listar o seed, criar, duplicada, vazia |
 | `test_edicao_categoria.py` | CA-09 e CA-10: editar, nome vazio/repetido, 404, confirmação, singular/plural e totais |
 | `test_categoria_nome_sem_case.py` | nome de categoria único sem diferenciar maiúsculas (criar, editar e seed) |
-| `test_exclusao_categoria.py` | CA-15: exclusão lógica, bloqueio com materiais, `404`, nome liberado e reutilizável, categoria fora das listas, seed só com a tabela vazia |
+| `test_exclusao_categoria.py` | CA-15: exclusão lógica, bloqueio com materiais com saldo, exclusão junto dos materiais zerados, `404`, nome liberado e reutilizável, categoria fora das listas, seed só com a tabela vazia |
 | `test_entrada.py` | CA-02 e entradas inválidas |
 | `test_saida.py` | CA-03, CA-04 e saídas inválidas |
 | `test_estoque.py` | CA-05, CA-06 e registro das movimentações |

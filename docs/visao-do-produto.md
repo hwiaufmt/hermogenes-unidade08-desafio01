@@ -45,7 +45,7 @@ O sistema é usado por pessoas cadastradas (nome, CPF e e-mail), que entram com 
 |---|:---:|:---:|:---:|
 | Criar categoria | ✅ | | |
 | Editar categoria (com aviso de impacto) | ✅ | | |
-| Excluir categoria (exclusão lógica, só sem materiais) | ✅ | | |
+| Excluir categoria (exclusão lógica, bloqueada se algum material tiver saldo) | ✅ | | |
 | Cadastrar material | ✅ | | |
 | Excluir material (exclusão lógica) | ✅ | | |
 | Consultar o estoque (Pesquisa e Saldos) | ✅ | ✅ | |
@@ -81,7 +81,7 @@ O que o produto **faz hoje**, por capacidade.
 - O estoquista cria novas categorias e **edita o nome** de uma categoria.
 - O nome é único **sem diferenciar maiúsculas de minúsculas**: "Escrita" e "escrita" são a mesma categoria.
 - Ao editar uma categoria que **já tem materiais**, o sistema **informa quantos registros serão afetados** e só grava depois de uma confirmação. Se a categoria não tem materiais, grava direto.
-- O estoquista pode **excluir** uma categoria (exclusão **lógica**), mas **só se ela não tiver materiais**: com materiais, o sistema recusa e informa quantos. A categoria excluída some do sistema e o nome pode ser reutilizado por uma nova categoria; o registro continua no banco e não há restauração pela interface. As categorias iniciais só são criadas com o banco vazio, então uma inicial excluída não volta ao reiniciar.
+- O estoquista pode **excluir** uma categoria (exclusão **lógica**), mas **só se nenhum material dela tiver saldo**: nesse caso o sistema recusa e informa quantos. Os materiais sem saldo são excluídos junto, e as movimentações deles continuam guardadas. A categoria excluída some do sistema e o nome pode ser reutilizado por uma nova categoria; o registro continua no banco e não há restauração pela interface. As categorias iniciais só são criadas com o banco vazio, então uma inicial excluída não volta ao reiniciar.
 
 ### Materiais
 - Todo material pertence a **uma categoria válida**; sem categoria, o sistema não grava.
@@ -142,7 +142,7 @@ O escopo original era apenas o ciclo de estoque. Três sprints o entregaram; as 
 | **6. Consulta de saldos** | A visão Saldos, com total geral, resumo por categoria e saldo por material | Pedido do dono |
 | **7. Documento de visão** | Este documento | Pedido do dono |
 | **8. Exclusão lógica e saldos por material** | Exclusão lógica de materiais (com confirmação quando há saldo), tela Saldos como tabela por material agrupada por categoria e disponibilidade como Sim/Não | Pedido do dono |
-| **9. Exclusão lógica de categorias** | Exclusão lógica de categorias sem materiais, com o nome liberado para reutilização | Pedido do dono |
+| **9. Exclusão lógica de categorias** | Exclusão lógica de categorias (bloqueada se algum material tiver saldo; os sem saldo saem junto), com o nome liberado para reutilização | Pedido do dono |
 
 Cada sprint foi entregue em partes pequenas, verificada contra os critérios de aceite e documentada.
 
@@ -183,7 +183,7 @@ Esta seção descreve **o estado atual**: o que se assume, o que limita o produt
 - Existe **um único estoque** (um local), com os materiais contados em **unidades inteiras**.
 - O saldo reflete a realidade **desde que as movimentações sejam registradas**: o sistema não sabe de retiradas que ninguém lançou.
 - Quem usa o sistema tem **login** e recebe **um perfil**.
-- As categorias são poucas e conhecidas; a exclusão é só lógica e a categoria precisa estar sem materiais.
+- As categorias são poucas e conhecidas; a exclusão é só lógica e nenhum material da categoria pode ter saldo.
 
 ### Restrições técnicas
 - O banco é **um arquivo local** (SQLite) e a evolução da estrutura é só uma **migração leve**: ao iniciar, o sistema acrescenta as colunas novas que faltam (hoje, as da exclusão lógica de materiais e de categorias) e não mexe nos dados. Outras mudanças (alterar ou remover colunas) exigem recriar o banco ou alterá-lo à mão. Como a migração altera o arquivo do banco em uso, convém **copiá-lo antes de atualizar o sistema**.

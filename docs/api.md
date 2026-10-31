@@ -22,7 +22,7 @@ API REST em JSON. Com o app rodando, a documentação interativa (Swagger) fica 
 | `401` | sem login, sessão inválida/expirada, usuário inativo; ou CPF/senha errados no login |
 | `403` | logado, mas o perfil não tem a permissão da rota |
 | `404` | material, categoria ou usuário inexistente |
-| `409` | saldo insuficiente para a saída; CPF de usuário já cadastrado; inativar ou rebaixar o último administrador; alterar categoria com materiais sem confirmação (a resposta traz também `afetados`); excluir material com saldo sem confirmação (a resposta traz também `saldo`); excluir categoria com materiais (a resposta traz também `materiais`) |
+| `409` | saldo insuficiente para a saída; CPF de usuário já cadastrado; inativar ou rebaixar o último administrador; alterar categoria com materiais sem confirmação (a resposta traz também `afetados`); excluir material com saldo sem confirmação (a resposta traz também `saldo`); excluir categoria com materiais com saldo (a resposta traz também `materiais`) |
 | `422` | dado inválido: campo ausente, tipo errado, valor fora do limite, categoria inválida, nome duplicado, CPF/e-mail/perfil/senha inválidos, filtro de status inválido |
 
 ### Objetos
@@ -195,19 +195,19 @@ Manter o mesmo nome não altera nada e não pede confirmação. Mudar só a caix
 
 **Permissão:** `excluir_categoria`.
 
-Exclusão **lógica**: o registro continua no banco com a data da exclusão (`excluido_em`), mas a categoria deixa de aparecer em `GET /categorias`, em `GET /saldos`, no cadastro de material (`422`), no filtro `?categoria_id=` (`404`) e na edição (`404`). Só é permitida **sem materiais ativos**; materiais já excluídos não contam. Não há rota para restaurar.
+Exclusão **lógica**: o registro continua no banco com a data da exclusão (`excluido_em`), mas a categoria deixa de aparecer em `GET /categorias`, em `GET /saldos`, no cadastro de material (`422`), no filtro `?categoria_id=` (`404`) e na edição (`404`). É **bloqueada se algum material ativo tiver saldo** maior que zero. Os materiais ativos **sem saldo** (por exemplo, os que chegaram a 0 por saídas) **são excluídos logicamente junto** com a categoria, e as movimentações deles continuam guardadas. Materiais já excluídos não contam. Não há rota para restaurar.
 
 | Resposta | Descrição |
 |---|---|
 | `204` | excluída, sem corpo |
 | `404` | `"A categoria 99 não existe."` (inclui categoria já excluída) |
-| `409` | a categoria tem materiais (ver abaixo); nada é gravado |
+| `409` | a categoria tem materiais com saldo (ver abaixo); nada é gravado, nem os materiais sem saldo |
 
 **`409` de bloqueio**
 
 ```json
 {
-  "detail": "A categoria 'Escrita' tem 2 materiais; exclua os materiais antes de excluir a categoria.",
+  "detail": "A categoria 'Escrita' tem 2 materiais com saldo em estoque; zere o saldo ou exclua esses materiais antes de excluir a categoria.",
   "materiais": 2
 }
 ```

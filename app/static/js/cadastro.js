@@ -186,7 +186,8 @@ function abrirExclusao(categoria) {
   estado.emExclusao = categoria;
   textoExclusao.textContent =
     `Excluir a categoria "${categoria.nome}"? Ela deixa de aparecer no sistema ` +
-    "e o nome poderá ser usado por uma nova categoria.";
+    "e o nome poderá ser usado por uma nova categoria. Os materiais dela sem saldo " +
+    "serão excluídos junto; se algum tiver saldo, a exclusão é recusada.";
   dialogoExclusao.showModal();
 }
 

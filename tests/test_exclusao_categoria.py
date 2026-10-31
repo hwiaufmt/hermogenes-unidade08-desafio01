@@ -1,8 +1,10 @@
+from collections.abc import Callable
+
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.models import Categoria
+from app.models import Categoria, Material
 from app.services.estoque import semear_categorias
 
 
@@ -20,9 +22,12 @@ def _criar_categoria(client: TestClient, nome: str) -> int:
     return resposta.json()["id"]
 
 
-def _cadastrar_material(client: TestClient, categoria_id: int, nome: str) -> int:
+def _cadastrar_material(
+    client: TestClient, categoria_id: int, nome: str, quantidade: int = 0
+) -> int:
     resposta = client.post(
-        "/materiais", json={"nome": nome, "categoria_id": categoria_id}
+        "/materiais",
+        json={"nome": nome, "categoria_id": categoria_id, "quantidade": quantidade},
     )
     assert resposta.status_code == 201
     return resposta.json()["id"]
@@ -75,30 +80,79 @@ def test_ca15_categoria_inexistente_responde_404(client: TestClient) -> None:
     assert "9999" in resposta.json()["detail"]
 
 
-def test_ca15_categoria_com_materiais_e_bloqueada_e_nada_e_gravado(
+def test_ca15_categoria_com_materiais_com_saldo_e_bloqueada_e_nada_e_gravado(
     client: TestClient,
 ) -> None:
     escrita = _id_categoria(client, "Escrita")
-    _cadastrar_material(client, escrita, "Caneta")
-    _cadastrar_material(client, escrita, "Lápis")
+    _cadastrar_material(client, escrita, "Caneta", quantidade=4)
+    _cadastrar_material(client, escrita, "Lápis", quantidade=1)
 
     resposta = client.delete(f"/categorias/{escrita}")
 
     assert resposta.status_code == 409
     assert resposta.json()["materiais"] == 2
-    assert "2 materiais" in resposta.json()["detail"]
+    assert "2 materiais com saldo" in resposta.json()["detail"]
     assert "Escrita" in _nomes_listados(client)
     assert len(client.get("/materiais").json()) == 2
 
 
 def test_ca15_mensagem_no_singular_com_um_material(client: TestClient) -> None:
     escrita = _id_categoria(client, "Escrita")
-    _cadastrar_material(client, escrita, "Caneta")
+    _cadastrar_material(client, escrita, "Caneta", quantidade=2)
 
     resposta = client.delete(f"/categorias/{escrita}")
 
     assert resposta.json()["materiais"] == 1
-    assert "1 material;" in resposta.json()["detail"]
+    assert "1 material com saldo" in resposta.json()["detail"]
+
+
+def test_ca15_material_zerado_por_saidas_nao_bloqueia_e_e_excluido_junto(
+    client: TestClient,
+) -> None:
+    lapiseiras = _criar_categoria(client, "Lapiseiras")
+    lapiseira = _cadastrar_material(client, lapiseiras, "lapiseira", quantidade=5)
+    client.post(f"/materiais/{lapiseira}/saida", json={"quantidade": 5})
+
+    resposta = client.delete(f"/categorias/{lapiseiras}")
+
+    assert resposta.status_code == 204
+    assert "Lapiseiras" not in _nomes_listados(client)
+    assert client.get(f"/materiais/{lapiseira}").status_code == 404
+    assert client.get("/materiais").json() == []
+
+
+def test_ca15_com_um_material_com_saldo_nada_e_excluido_nem_os_zerados(
+    client: TestClient,
+) -> None:
+    escrita = _id_categoria(client, "Escrita")
+    zerado = _cadastrar_material(client, escrita, "Giz", quantidade=0)
+    _cadastrar_material(client, escrita, "Caneta", quantidade=3)
+
+    resposta = client.delete(f"/categorias/{escrita}")
+
+    assert resposta.status_code == 409
+    assert resposta.json()["materiais"] == 1
+    assert client.get(f"/materiais/{zerado}").status_code == 200
+    assert "Escrita" in _nomes_listados(client)
+
+
+def test_ca15_materiais_excluidos_junto_ficam_no_banco_com_as_movimentacoes(
+    client: TestClient,
+    fabrica_sessao: sessionmaker[Session],
+    contar_movimentacoes: Callable[[], int],
+) -> None:
+    lapiseiras = _criar_categoria(client, "Lapiseiras")
+    lapiseira = _cadastrar_material(client, lapiseiras, "lapiseira", quantidade=2)
+    client.post(f"/materiais/{lapiseira}/saida", json={"quantidade": 2})
+    movimentacoes = contar_movimentacoes()
+
+    client.delete(f"/categorias/{lapiseiras}")
+
+    with fabrica_sessao() as db:
+        material = db.get(Material, lapiseira)
+        assert material is not None
+        assert material.excluido_em is not None
+    assert contar_movimentacoes() == movimentacoes == 1
 
 
 def test_ca15_material_ja_excluido_nao_bloqueia_a_exclusao_da_categoria(
