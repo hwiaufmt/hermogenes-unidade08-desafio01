@@ -19,6 +19,49 @@ Este é um **MVP** que valida o ciclo *cadastrar → entrada → saída → cons
 - **Login e perfis:** entrada por CPF e senha; três perfis com permissões diferentes (tabela abaixo).
 - Cada entrada e saída grava uma movimentação (tipo, quantidade, saldo após, data UTC) na mesma transação do saldo.
 
+## Telas
+
+Capturas do sistema rodando com **dados de demonstração** (materiais, nomes e e-mails fictícios). Cada tela aparece para o perfil que a acessa; veja a tabela de [permissões](#perfis-e-permissões).
+
+### Entrar
+Login por CPF e senha, para qualquer perfil.
+
+![Tela de login com os campos CPF e senha](docs/img/01-login.jpg)
+
+### Pesquisa (estoquista e operador)
+Materiais agrupados por categoria, com busca por nome e filtros de categoria e disponibilidade (Sim/Não). Material sem saldo fica destacado. O botão **Excluir** (exclusão lógica) aparece só para o estoquista, como nesta captura.
+
+![Tela Pesquisa com materiais agrupados por categoria e a caneta preta destacada como indisponível](docs/img/02-pesquisa.jpg)
+
+### Saldos (estoquista e operador)
+Total geral e uma seção por categoria, com Material, Quantidade e Disponível. Categorias sem materiais também aparecem (no fim desta tela, "Limpeza" mostra o aviso).
+
+![Tela Saldos com o total geral e as tabelas por categoria](docs/img/03-saldos.jpg)
+
+### Cadastro (estoquista)
+Novo material, nova categoria e a lista de categorias, com edição e exclusão.
+
+![Tela Cadastro com os formulários de material e de categoria e a lista de categorias](docs/img/04-cadastro.jpg)
+
+Ao alterar o nome de uma categoria que já tem materiais, o sistema **informa quantos registros serão afetados** e só grava depois da confirmação:
+
+![Janela de confirmação avisando que a mudança de nome afetará 4 registros](docs/img/05-aviso-de-impacto.jpg)
+
+### Movimentar (operador)
+Entrada e saída de materiais, com o saldo atual ao lado. Uma saída maior que o saldo é bloqueada e nada é registrado:
+
+![Tela Movimentar mostrando a mensagem de saldo insuficiente](docs/img/06-movimentar-saldo-insuficiente.jpg)
+
+### Usuários (administrador)
+Cadastro e manutenção de usuários, com CPF único. Usuários não são apagados, apenas inativados (como Paulo Ramos, em vermelho).
+
+![Tela Usuários com o formulário e a lista de usuários, um deles inativo](docs/img/07-usuarios.jpg)
+
+### No celular
+A interface é responsiva. Tela Saldos em um celular (375 px de largura):
+
+![Tela Saldos em largura de celular](docs/img/08-saldos-celular.jpg)
+
 ## Perfis e permissões
 
 | Ação | Estoquista | Operador | Administrador |
@@ -161,7 +204,7 @@ app/
 ├── routers/           # autenticacao, categorias, materiais, movimentacoes, usuarios, paginas
 ├── templates/         # base, login, acesso_negado, pesquisa, movimentar, cadastro, usuarios
 └── static/            # css e js (o JS só chama a API e renderiza)
-docs/                  # guia de uso, API, arquitetura
+docs/                  # visão do produto, guia de uso, API, arquitetura, handoff; img/ tem as capturas de tela do README
 tests/                 # um arquivo por área; conftest.py com os fixtures de login
 ```
 
