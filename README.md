@@ -13,7 +13,8 @@ Este é um **MVP** que valida o ciclo *cadastrar → entrada → saída → cons
 - **Status automático:** saldo 0 → **Indisponível**; qualquer outro → **Disponível**. Não há campo editável. Nas telas, a disponibilidade aparece como **Sim** ou **Não** (a API continua devolvendo `status`).
 - **Exclusão lógica de material:** o estoquista exclui um material pela Pesquisa (com confirmação quando há saldo). Ele some de todas as telas e totais, mas o registro e as movimentações continuam no banco. Não há restauração pela interface.
 - **Pesquisa:** materiais e saldos agrupados por categoria, com busca por nome e filtros de categoria e disponibilidade (Sim/Não).
-- **Saldos:** visão de leitura com o **total geral** e uma tabela **Material | Quantidade | Categoria | Disponível**, agrupada por categoria em ordem alfabética, tudo calculado no servidor.
+- **Saldos:** visão de leitura com o **total geral** e **uma seção por categoria**, como a Pesquisa, com a tabela **Material | Quantidade | Disponível**. As categorias sem materiais também aparecem, com um aviso. Tudo calculado no servidor.
+- **Ordem alfabética única:** Pesquisa, Saldos e as listas da API ordenam categorias e materiais igual, sem diferenciar maiúsculas nem acentos ("Água" junto de "A"), com a ordem decidida no servidor.
 - **Usuários:** nome, **CPF único** e e-mail; cadastrar, editar, inativar e reativar.
 - **Login e perfis:** entrada por CPF e senha; três perfis com permissões diferentes (tabela abaixo).
 - Cada entrada e saída grava uma movimentação (tipo, quantidade, saldo após, data UTC) na mesma transação do saldo.
@@ -88,7 +89,7 @@ pytest                          # testes (usam SQLite em memória)
 ruff check . && ruff format .   # lint e formatação
 ```
 
-Cada critério de aceite tem testes nomeados com o ID (`test_ca01_...` a `test_ca16_...`). Os testes de acesso conferem, para cada perfil e cada rota, se o resultado é permitido ou `403`, usando a matriz real.
+Cada critério de aceite tem testes nomeados com o ID (`test_ca01_...` a `test_ca18_...`). Os testes de acesso conferem, para cada perfil e cada rota, se o resultado é permitido ou `403`, usando a matriz real.
 
 ## Páginas
 
@@ -97,7 +98,7 @@ Cada critério de aceite tem testes nomeados com o ID (`test_ca01_...` a `test_c
 | `/login` | **Entrar** com CPF e senha | público |
 | `/` | leva cada perfil à sua primeira tela | logado |
 | `/pesquisa` | **Pesquisa:** saldos agrupados por categoria, com busca, filtros e botão Excluir (estoquista) | estoquista, operador |
-| `/estoque/saldos` | **Saldos:** total geral e tabela Material, Quantidade, Categoria e Disponível, agrupada por categoria | estoquista, operador |
+| `/estoque/saldos` | **Saldos:** total geral e uma seção por categoria (Material, Quantidade e Disponível), inclusive as sem materiais | estoquista, operador |
 | `/movimentar` | **Movimentar:** registrar entrada ou saída e ver o saldo | operador |
 | `/materiais/novo` | **Cadastro:** novo material, nova categoria e lista de categorias com edição e exclusão | estoquista |
 | `/gestao/usuarios` | **Usuários:** cadastrar, editar, inativar e reativar | administrador |

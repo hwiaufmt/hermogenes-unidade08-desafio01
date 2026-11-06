@@ -120,7 +120,7 @@ Quando o saldo chega a 0, o material passa a **Disponível: Não** automaticamen
 
 ## Tela Pesquisa (`/pesquisa`, estoquista e operador)
 
-Mostra os materiais **agrupados por categoria**, em ordem alfabética, com saldo, estoque mínimo e status. Os filtros se combinam:
+Mostra os materiais **agrupados por categoria**, com saldo, estoque mínimo e disponibilidade. Categorias e materiais seguem a **mesma ordem alfabética da tela Saldos**, sem diferenciar maiúsculas nem acentos ("Água" fica junto de "A"). Categorias sem materiais não aparecem aqui (na tela Saldos, aparecem). Os filtros se combinam:
 
 - **Buscar por nome:** digite parte do nome; a lista se atualiza sozinha. Maiúsculas e minúsculas não importam (para letras acentuadas, prefira digitar como está cadastrado).
 - **Categoria:** "Todas as categorias" ou uma só.
@@ -141,12 +141,12 @@ A exclusão é **lógica**: o material some da Pesquisa, dos Saldos, da tela Mov
 
 ## Tela Saldos (`/estoque/saldos`, estoquista e operador)
 
-Mostra o **total do estoque** e o saldo de cada material. Não há filtros: para procurar um material, use a Pesquisa.
+Mostra o **total do estoque** e o saldo de cada material, por categoria. Não há filtros: para procurar um material, use a Pesquisa.
 
 1. **Total geral:** três cartões com quantos **materiais** existem, quantas **unidades** há em estoque (a soma dos saldos) e quantos materiais estão **indisponíveis** (saldo 0). O número de indisponíveis fica em vermelho quando é maior que zero.
-2. **Saldo por material:** uma tabela com as colunas **Material**, **Quantidade**, **Categoria** e **Disponível** (**Sim** ou **Não**). Ela vem **agrupada por categoria, em ordem alfabética**, e os materiais também em ordem alfabética dentro de cada categoria. Materiais com **Não** ficam destacados, como na Pesquisa. Categorias sem material não aparecem aqui, e materiais excluídos também não.
+2. **Uma seção por categoria:** cada categoria tem o seu título e, abaixo, uma tabela com as colunas **Material**, **Quantidade** e **Disponível** (**Sim** ou **Não**), como na Pesquisa. As categorias e, dentro de cada uma, os materiais ficam em **ordem alfabética, sem diferenciar maiúsculas nem acentos**, igual à Pesquisa. Materiais com **Não** ficam destacados. **Categorias sem material também aparecem**, com o aviso "Nenhum material nesta categoria."; categorias e materiais excluídos não aparecem.
 
-Os números são calculados pelo sistema e refletem as entradas e saídas já registradas, mas a tela **não se atualiza sozinha**: clique em **Atualizar saldos** (no alto da página) para buscar os valores mais recentes, por exemplo depois que alguém registrou uma saída. Em telas estreitas, a tabela rola na horizontal e pode ser percorrida pelo teclado.
+Os números são calculados pelo sistema e refletem as entradas e saídas já registradas, mas a tela **não se atualiza sozinha**: clique em **Atualizar saldos** (no alto da página) para buscar os valores mais recentes, por exemplo depois que alguém registrou uma saída. Em telas estreitas, cada tabela rola na horizontal, se precisar, e pode ser percorrida pelo teclado.
 
 ## Mensagens de erro
 

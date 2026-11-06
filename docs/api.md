@@ -123,7 +123,7 @@ Devolve o usuário da sessão. **Permissão:** apenas estar logado.
 
 **Permissão:** `consultar_estoque`, `cadastrar_material`, `criar_categoria`, `editar_categoria` ou `excluir_categoria` (qualquer uma).
 
-Lista as categorias **ativas** (as excluídas não aparecem) em ordem alfabética, com **quantos materiais cada uma tem** (`total_materiais`). Já vem com Papelaria, Escrita e Informática.
+Lista as categorias **ativas** (as excluídas não aparecem) em ordem alfabética (sem diferenciar maiúsculas nem acentos), com **quantos materiais cada uma tem** (`total_materiais`). Já vem com Papelaria, Escrita e Informática.
 
 **200**
 
@@ -224,7 +224,7 @@ Exclusão **lógica**: o registro continua no banco com a data da exclusão (`ex
 
 **Permissão:** `consultar_estoque` ou `movimentar` (qualquer uma).
 
-Lista os materiais em ordem alfabética de nome. Os filtros se combinam.
+Lista os materiais **ordenados por categoria e, dentro dela, por nome**, na ordem alfabética única do sistema: sem diferenciar maiúsculas nem acentos ("Água" junto de "A"; "ábaco" entre "abacate" e "borda"). É a mesma ordem de `GET /saldos` e das telas Pesquisa e Saldos; os filtros mantêm essa ordem. Os filtros se combinam.
 
 | Parâmetro | Tipo | Descrição |
 |---|---|---|
@@ -353,9 +353,9 @@ Devolve a consulta de saldos: os **totais por categoria**, o saldo de cada mater
 Regras:
 
 - **Todas as categorias aparecem**, inclusive as sem materiais, com zeros e `materiais` vazio. (A Pesquisa, ao contrário, só mostra categorias com material.)
-- Categorias e materiais vêm em **ordem alfabética sem diferenciar maiúsculas de minúsculas**.
+- Categorias e materiais vêm na **ordem alfabética única do sistema**: sem diferenciar maiúsculas **nem acentos**, a mesma de `GET /categorias` e `GET /materiais`. Quando só o acento difere, o desempate é estável ("Informatica" antes de "Informática").
 - Os números acompanham as entradas e saídas: cada chamada reflete o saldo atual. Materiais excluídos não entram em nenhum número.
-- A tela Saldos usa só o total geral (`totais`) e as listas de `materiais`, na ordem recebida (categoria e depois nome); os totais por categoria seguem na API, mas a tela não os exibe.
+- A tela Saldos usa o total geral (`totais`) e, para cada categoria na ordem recebida, o nome e a lista de `materiais` (as categorias com `materiais` vazio aparecem com um aviso); os totais por categoria seguem na API, mas a tela não os exibe.
 - Não há filtros nem paginação; para filtrar por nome, categoria ou status, use `GET /materiais`.
 - Respostas de erro: `401` sem login e `403` para quem não tem `consultar_estoque` (o administrador).
 

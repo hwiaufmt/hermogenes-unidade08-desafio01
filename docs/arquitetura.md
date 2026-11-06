@@ -125,7 +125,7 @@ A entrada segue o mesmo caminho, com `quantidade = quantidade + :n`.
 
 `consultar_saldos(db)` devolve uma estrutura de `NamedTuple`s (`ConsultaDeSaldos` com `categorias` e `totais`), que os schemas `ConsultaDeSaldosSaida` serializam:
 
-1. Lê todas as categorias **ativas** e as ordena por `nome.casefold()`; lê todos os materiais de uma vez e os distribui por `categoria_id`.
+1. Lê todas as categorias **ativas**, já ordenadas por `chave_alfabetica`; lê todos os materiais de uma vez e os distribui por `categoria_id`.
 2. Para cada categoria, `_saldo_da_categoria` calcula `total_materiais`, `total_unidades` (soma de `quantidade`) e `total_indisponiveis`, este último com `calcular_status(...) == "Indisponível"`, para a regra de status continuar em um só lugar.
 3. O **total geral** é a soma dos totais das categorias, calculada também no service. O JavaScript não soma nada.
 
@@ -139,6 +139,7 @@ Categorias sem materiais entram com zeros e lista vazia. Não há tabela nova, e
 | Sem saída dupla concorrente | Verificação e subtração atômicas no mesmo `UPDATE` |
 | Tudo ou nada | Saldo e movimentação no mesmo `commit`; `rollback` em qualquer falha |
 | Categoria obrigatória e válida | Verificada em `criar_material` antes de gravar |
+| Ordem alfabética única | `chave_alfabetica` (em `services/estoque.py`) ordena categorias e materiais: sem diferenciar maiúsculas (`casefold`) nem acentos (NFKD sem os sinais), com desempate pelo texto em `casefold` e, nos materiais, pelo `id`. `listar_categorias`, `listar_categorias_com_totais`, `listar_materiais` (por categoria e depois por nome) e `consultar_saldos` usam a mesma chave, então Pesquisa e Saldos mostram a mesma ordem. O JavaScript não reordena |
 | Categoria única, **sem diferenciar maiúsculas** | O service compara os nomes com `casefold` (o `lower()` do SQLite só trata ASCII) ao criar e editar, **olhando só categorias ativas**; acentos diferenciam. O índice único de `categorias.nome` continua diferenciando maiúsculas (a migração leve não altera índices) e vale como rede de segurança: `IntegrityError` também vira `CategoriaDuplicadaError` |
 | Quem altera o nome de uma categoria sabe o que será afetado | `atualizar_categoria` conta os materiais da categoria; com materiais e sem `confirmar`, levanta `ConfirmacaoNecessariaError` e **nada é gravado**. A checagem de nome repetido vem antes, para não pedir confirmação de algo que falharia |
 | Excluir categoria só sem materiais com saldo | `excluir_categoria` conta os materiais ativos com `quantidade > 0`; com algum, levanta `CategoriaComMateriaisError` (`409`, com `materiais`) e nada é gravado. Sem nenhum, marca `excluido_em` nos materiais ativos restantes (todos sem saldo) e na categoria, **na mesma transação**; as movimentações ficam intactas. Material já excluído não conta |
@@ -175,9 +176,9 @@ Módulos ES, sem framework e sem variáveis globais:
 
 - **`api.js`**: `requisitar`, `enviarJson` (aceita o método, ex.: `PUT`), `mostrarMensagem` e a leitura de mensagens de erro da API. Os erros da API são lançados como `ErroDeApi`, que carrega o `status` e o corpo da resposta (a tela de categorias lê o `afetados` do `409`). Uma resposta `401` (fora do login) leva a `/login`, para o caso de a sessão cair com a página aberta.
 - **`login.js`** e **`sair.js`**: entrar e sair. Depois de entrar, `/` leva à primeira tela do perfil.
-- **`pesquisa.js`**: carrega categorias e materiais, envia busca, categoria e status à API (a busca por nome espera 250 ms depois da digitação), **agrupa por categoria para exibir** e mostra um resumo. Para quem tem `excluir_material` (`data-pode-excluir`), cada linha tem o botão **Excluir**: a tela busca o material (`GET /materiais/{id}`) para ler o saldo atual, mostra o `<dialog>` de confirmação (o foco inicial fica em "Cancelar") e chama `DELETE /materiais/{id}?confirmar=true`.
-- **`saldos.js`**: busca `GET /saldos`, mostra o total geral e uma única tabela **Material | Quantidade | Categoria | Disponível**: só "achata" as categorias e os materiais na ordem em que o servidor os entrega (alfabética) e marca a primeira linha de cada categoria. Não faz conta nem reordena. O botão "Atualizar saldos" busca de novo.
-- **`tabelas.js`**: montagem de células, cabeçalhos e regiões rolagem-focáveis de tabela, e a **tradução do status em Sim/Não** (`rotuloDisponivel`, `criarSeloDisponivel`), usada por `pesquisa.js`, `saldos.js` e `movimentar.js`. É só rótulo: o JavaScript não calcula o status.
+- **`pesquisa.js`**: carrega categorias e materiais, envia busca, categoria e status à API (a busca por nome espera 250 ms depois da digitação), **agrupa por categoria para exibir**, na ordem recebida do servidor (sem reordenar), e mostra um resumo. Para quem tem `excluir_material` (`data-pode-excluir`), cada linha tem o botão **Excluir**: a tela busca o material (`GET /materiais/{id}`) para ler o saldo atual, mostra o `<dialog>` de confirmação (o foco inicial fica em "Cancelar") e chama `DELETE /materiais/{id}?confirmar=true`.
+- **`saldos.js`**: busca `GET /saldos`, mostra o total geral e **uma seção por categoria** (como a Pesquisa) com a tabela **Material | Quantidade | Disponível**; a categoria sem materiais mostra o aviso "Nenhum material nesta categoria.". Só monta as seções na ordem em que o servidor entrega categorias e materiais. Não faz conta nem reordena. O botão "Atualizar saldos" busca de novo.
+- **`tabelas.js`**: montagem de células, cabeçalhos, tabelas (`criarTabela`), regiões rolagem-focáveis e a **seção de categoria** (`criarSecaoDeCategoria`: título h2 e conteúdo), usadas por `pesquisa.js` e `saldos.js`; e a **tradução do status em Sim/Não** (`rotuloDisponivel`, `criarSeloDisponivel`), usada por `pesquisa.js`, `saldos.js` e `movimentar.js`. É só rótulo: o JavaScript não calcula o status.
 - **`movimentar.js`**: lista materiais, mostra o saldo vindo da API e registra a movimentação.
 - **`cadastro.js`**: cadastra material, cria categoria e **edita categoria**: lista as categorias com o total de materiais e abre dois `<dialog>` nativos, um de edição e outro de confirmação. O texto do aviso ("afetará N registros") vem pronto do `detail` do `409`; a tela não monta a frase nem calcula nada. "Voltar" reabre a edição com o nome digitado. O botão "Editar" só existe para quem tem a ação `editar_categoria`. O botão **Excluir** só existe para quem tem `excluir_categoria` (`data-pode-excluir`): abre um `<dialog>` com o foco em "Cancelar" e chama `DELETE /categorias/{id}`; se o servidor recusar (`409`, categoria com materiais), a tela mostra a mensagem pronta do `detail`.
 - **`usuarios.js`**: lista, cadastra, edita (CPF travado, senha opcional), inativa e reativa usuários.
@@ -208,6 +209,7 @@ Fixtures principais:
 | `test_estoque.py` | CA-05, CA-06 e registro das movimentações |
 | `test_pesquisa.py` | busca por nome, status e combinações de filtros |
 | `test_saldos.py` | CA-11: totais por categoria e geral, categorias vazias, status, coerência com entradas e saídas, ordem alfabética |
+| `test_ordenacao.py` | CA-17: chave alfabética (maiúsculas, acentos, desempate), ordem de `/materiais`, `/categorias` e `/saldos`, e que Saldos e a lista seguem a mesma ordem |
 | `test_exclusao_material.py` | CA-12: exclusão lógica, confirmação com saldo, `404` depois de excluir, ausência nos totais e movimentações preservadas |
 | `test_migracoes.py` | migração leve: acrescenta a coluna, preserva dados e é idempotente |
 | `test_erros.py` | mensagens de validação em português |
@@ -217,6 +219,6 @@ Fixtures principais:
 | `test_administrador_inicial.py` | criação única do primeiro administrador |
 | `test_permissoes.py` | o mecanismo `exigir`, com matriz de teste própria |
 | `test_acesso_rotas.py` | CA-08: cada perfil × cada rota da API, com a **matriz real** |
-| `test_paginas.py` | CA-08 nas telas: redirecionamento, "Acesso negado", menu por perfil; CA-12 a CA-14 nas telas (botão Excluir, colunas de Saldos, Sim/Não); CA-16 (exclusão de categoria no Cadastro) |
+| `test_paginas.py` | CA-08 nas telas: redirecionamento, "Acesso negado", menu por perfil; CA-12 e CA-14 nas telas (botão Excluir, Sim/Não); CA-18 (Saldos por seção de categoria e colunas); CA-16 (exclusão de categoria no Cadastro) |
 
 O JavaScript não tem testes automatizados; foi conferido manualmente no navegador (desktop e celular) com os três perfis.

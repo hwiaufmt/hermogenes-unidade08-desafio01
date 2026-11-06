@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Produto** | Controle de Materiais de Escritório |
-| **Estado** | Protótipo funcional (as nove sprints de funcionalidades estão concluídas) |
+| **Estado** | Protótipo funcional (as dez sprints de funcionalidades estão concluídas) |
 | **Público deste documento** | Equipe e donos do produto |
 | **Data** | 29/10/2026 |
 
@@ -97,7 +97,8 @@ O que o produto **faz hoje**, por capacidade.
 
 ### Consulta
 - **Pesquisa:** lista os materiais agrupados por categoria, com **busca por nome** e filtros de **categoria** e **disponibilidade** (Sim/Não).
-- **Saldos:** mostra o **total geral** (materiais, unidades e indisponíveis) e uma tabela com **material, quantidade, categoria e disponível (Sim/Não)**, agrupada por categoria em ordem alfabética. Os números são calculados pelo sistema.
+- **Saldos:** mostra o **total geral** (materiais, unidades e indisponíveis) e uma seção por categoria, como a Pesquisa, com **material, quantidade e disponível (Sim/Não)**. As categorias sem materiais também aparecem, com um aviso. Os números são calculados pelo sistema.
+- **Ordem alfabética única:** Pesquisa e Saldos (e as listas da API) ordenam categorias e materiais da mesma forma, sem diferenciar maiúsculas nem acentos.
 - Materiais **indisponíveis** ficam destacados nas duas telas, com texto e ícone, não só com cor.
 
 ### Usuários e acesso
@@ -110,7 +111,7 @@ O que o produto **faz hoje**, por capacidade.
 - Funciona em **computador e celular**.
 - Acessibilidade básica: campos com rótulo, foco visível, mensagens anunciadas a leitores de tela, alvos de toque de 44 px e contraste conferido.
 - As **mensagens das telas e os erros das operações** do sistema (saldo insuficiente, CPF inválido, nome repetido e outros) estão em português. A exceção são as respostas padrão do framework para **endereços inexistentes** e **métodos não permitidos**, que saem em inglês ("Not Found", "Method Not Allowed"), e a documentação interativa da API (`/docs`).
-- Testes automatizados cobrem **todos os critérios de aceite** (CA-01 a CA-16).
+- Testes automatizados cobrem **todos os critérios de aceite** (CA-01 a CA-18).
 
 ## 6. Fora do escopo
 
@@ -143,6 +144,7 @@ O escopo original era apenas o ciclo de estoque. Três sprints o entregaram; as 
 | **7. Documento de visão** | Este documento | Pedido do dono |
 | **8. Exclusão lógica e saldos por material** | Exclusão lógica de materiais (com confirmação quando há saldo), tela Saldos como tabela por material agrupada por categoria e disponibilidade como Sim/Não | Pedido do dono |
 | **9. Exclusão lógica de categorias** | Exclusão lógica de categorias (bloqueada se algum material tiver saldo; os sem saldo saem junto), com o nome liberado para reutilização | Pedido do dono |
+| **10. Saldos no formato da Pesquisa** | Tela Saldos com uma seção por categoria (inclusive as sem materiais) e a mesma ordem alfabética, sem diferenciar maiúsculas nem acentos, em Pesquisa e Saldos | Pedido do dono |
 
 Cada sprint foi entregue em partes pequenas, verificada contra os critérios de aceite e documentada.
 

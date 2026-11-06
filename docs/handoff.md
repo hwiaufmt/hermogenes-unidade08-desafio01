@@ -1,10 +1,10 @@
 # Handoff: Controle de Materiais de Escritório
 
-Para quem assume o projeto (pessoa ou Claude). Estado em **30/10/2026**, `main` em `90cf695`, igual à `origin/main`. Antes de qualquer tarefa, leia o [`CLAUDE.md`](../CLAUDE.md): ele é a fonte de verdade das regras, dos critérios de aceite e das decisões.
+Para quem assume o projeto (pessoa ou Claude). Estado ao fim da **Sprint 10** (atualizado em 06/11/2026); o commit atual está no `git log`. Antes de qualquer tarefa, leia o [`CLAUDE.md`](../CLAUDE.md): ele é a fonte de verdade das regras, dos critérios de aceite e das decisões.
 
 ## 1. Onde o projeto está
 
-Protótipo funcional, **9 sprints concluídas**, **318 testes passando**, ruff limpo.
+Protótipo funcional, **10 sprints concluídas**, **326 testes passando**, ruff limpo.
 
 | Sprint | Entrega |
 |---|---|
@@ -15,8 +15,9 @@ Protótipo funcional, **9 sprints concluídas**, **318 testes passando**, ruff l
 | 7 | Documento de visão do produto |
 | 8 | Exclusão lógica de materiais; tabela de Saldos por material; disponibilidade Sim/Não |
 | 9 | Exclusão lógica de categorias |
+| 10 | Saldos com uma seção por categoria (inclusive vazias); ordem alfabética única, sem maiúsculas nem acentos, no servidor |
 
-Critérios de aceite: CA-01 a CA-16 (seção 5 do CLAUDE.md), cada um com testes `test_caNN_*`.
+Critérios de aceite: CA-01 a CA-18 (seção 5 do CLAUDE.md), cada um com testes `test_caNN_*`.
 
 ## 2. Como rodar
 
@@ -42,7 +43,9 @@ Router (HTTP) → service (regra de negócio) → models. Regras só em `app/ser
 - **Migração leve** (`app/migracoes.py`): só **acrescenta colunas** ao iniciar, idempotente, sem tocar nos dados. Qualquer outra mudança de estrutura exige recriar o banco ou alterar a tabela à mão. Com `--reload`, o servidor migra o `estoque.db` assim que o código é salvo. **Copie `estoque.db` antes de atualizar.**
 - **Sim/Não** é só rótulo de tela (`rotuloDisponivel` em `tabelas.js`); a API continua devolvendo `status` `"Disponível"`/`"Indisponível"`.
 - **Rotas de página:** `/estoque/saldos` e `/gestao/usuarios` (e não `/saldos` e `/usuarios`), porque estas são a API.
-- **Nome da categoria** é comparado por `casefold` no service; acentos diferenciam.
+- **Nome da categoria** é comparado por `casefold` no service; acentos diferenciam (a **igualdade** de nome).
+- **Ordenação** é outra coisa: `chave_alfabetica` (service) ordena categorias e materiais ignorando maiúsculas **e acentos**, para todas as listas e telas. Não ordene no banco nem no JavaScript (nada de `ORDER BY` de nome nem `localeCompare`); `GET /materiais` sai por categoria e depois por nome.
+- **Saldos** e **Pesquisa** compartilham os helpers `criarSecaoDeCategoria` e `criarTabela` (`tabelas.js`). Saldos mostra categorias vazias; a Pesquisa as omite.
 
 ## 5. Armadilhas conhecidas
 
@@ -64,8 +67,7 @@ Do CLAUDE.md, seção 12 (todas **fora do escopo atual**, não implementar sem p
 
 Observações ainda não tratadas:
 
-- A ordenação dos materiais na Pesquisa é binária (diferencia maiúsculas), diferente de Saldos, que usa `casefold`.
-- A tela Saldos não mostra mais categorias sem materiais (a API `/saldos` continua devolvendo-as com zeros).
+- Os testes das colunas de Saldos conferem a definição no `saldos.js` (as tabelas são montadas no JavaScript); não há teste automatizado do navegador (Playwright não está instalado).
 - Um banco com categorias próprias e sem as iniciais não recebe as iniciais (efeito do seed só com tabela vazia).
 
 ## 7. Forma de trabalho combinada com o dono do projeto
