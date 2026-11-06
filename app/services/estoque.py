@@ -1,3 +1,4 @@
+import unicodedata
 from datetime import UTC, datetime
 from typing import NamedTuple
 
@@ -90,14 +91,23 @@ def _plural(quantidade: int, singular: str, plural: str) -> str:
     return singular if quantidade == 1 else plural
 
 
+def chave_alfabetica(texto: str) -> tuple[str, str]:
+    """Chave de ordenação **única** do sistema (Pesquisa, Saldos e listas).
+
+    Ordem alfabética sem diferenciar maiúsculas nem acentos ("Água" fica junto de
+    "A"). O desempate pelo texto em `casefold` mantém a ordem estável e previsível
+    quando só os acentos diferem ("Informatica" antes de "Informática").
+    """
+    decomposto = unicodedata.normalize("NFKD", texto.casefold())
+    sem_acentos = "".join(c for c in decomposto if not unicodedata.combining(c))
+    return sem_acentos, texto.casefold()
+
+
 def listar_categorias(db: Session) -> list[Categoria]:
-    """Categorias ativas (as excluídas logicamente não aparecem)."""
-    consulta = (
-        select(Categoria)
-        .where(Categoria.excluido_em.is_(None))
-        .order_by(Categoria.nome)
-    )
-    return list(db.scalars(consulta))
+    """Categorias ativas (as excluídas logicamente não aparecem), em ordem
+    alfabética (`chave_alfabetica`)."""
+    consulta = select(Categoria).where(Categoria.excluido_em.is_(None))
+    return sorted(db.scalars(consulta), key=lambda c: chave_alfabetica(c.nome))
 
 
 def _obter_categoria_ativa(db: Session, categoria_id: int) -> Categoria:
@@ -116,9 +126,9 @@ def listar_categorias_com_totais(db: Session) -> list[ResumoCategoria]:
         )
         .where(Categoria.excluido_em.is_(None))
         .group_by(Categoria.id, Categoria.nome)
-        .order_by(Categoria.nome)
     )
-    return [ResumoCategoria(*linha) for linha in db.execute(consulta)]
+    resumos = [ResumoCategoria(*linha) for linha in db.execute(consulta)]
+    return sorted(resumos, key=lambda r: chave_alfabetica(r.nome))
 
 
 class SaldoDaCategoria(NamedTuple):
@@ -156,9 +166,9 @@ def consultar_saldos(db: Session) -> ConsultaDeSaldos:
     """Saldos agrupados por categoria, com totais por categoria e geral.
 
     Inclui as categorias sem materiais (com zeros). Categorias e materiais saem
-    em ordem alfabética, sem diferenciar maiúsculas de minúsculas.
+    na ordem alfabética única do sistema (`chave_alfabetica`).
     """
-    categorias = sorted(listar_categorias(db), key=lambda c: c.nome.casefold())
+    categorias = listar_categorias(db)
     por_categoria: dict[int, list[Material]] = {c.id: [] for c in categorias}
     for material in db.scalars(select(Material).where(Material.excluido_em.is_(None))):
         if material.categoria_id in por_categoria:
@@ -166,7 +176,7 @@ def consultar_saldos(db: Session) -> ConsultaDeSaldos:
     saldos = [
         _saldo_da_categoria(
             categoria,
-            sorted(por_categoria[categoria.id], key=lambda m: m.nome.casefold()),
+            sorted(por_categoria[categoria.id], key=lambda m: chave_alfabetica(m.nome)),
         )
         for categoria in categorias
     ]
@@ -277,11 +287,12 @@ def listar_materiais(
     busca: str | None = None,
     status: str | None = None,
 ) -> list[Material]:
+    """Materiais ativos, ordenados por categoria e depois por nome, na ordem
+    alfabética única do sistema (`chave_alfabetica`), igual à da tela Saldos."""
     consulta = (
         select(Material)
         .options(joinedload(Material.categoria))
         .where(Material.excluido_em.is_(None))
-        .order_by(Material.nome)
     )
     if categoria_id is not None:
         _obter_categoria_ativa(db, categoria_id)
@@ -295,7 +306,14 @@ def listar_materiais(
         consulta = consulta.where(Material.quantidade == 0)
     elif status == STATUS_DISPONIVEL:
         consulta = consulta.where(Material.quantidade > 0)
-    return list(db.scalars(consulta))
+    return sorted(
+        db.scalars(consulta),
+        key=lambda m: (
+            chave_alfabetica(m.categoria.nome),
+            chave_alfabetica(m.nome),
+            m.id,
+        ),
+    )
 
 
 def criar_material(
