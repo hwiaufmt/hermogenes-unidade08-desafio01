@@ -48,3 +48,26 @@ export function criarRegiaoRolavel(tabela, tituloId) {
   regiao.append(tabela);
   return regiao;
 }
+
+export function criarTabela(colunas, linhas) {
+  const corpo = document.createElement("tbody");
+  corpo.append(...linhas);
+  const tabela = document.createElement("table");
+  tabela.append(criarCabecalho(colunas), corpo);
+  return tabela;
+}
+
+// Seção de uma categoria, igual na Pesquisa e nos Saldos: título (h2) e o conteúdo
+// montado por `montarConteudo(tituloId)`, que recebe o id do título para a acessibilidade.
+export function criarSecaoDeCategoria(indice, titulo, montarConteudo) {
+  const tituloId = `grupo-${indice}`;
+  const secao = document.createElement("section");
+  secao.setAttribute("aria-labelledby", tituloId);
+
+  const cabecalho = document.createElement("h2");
+  cabecalho.id = tituloId;
+  cabecalho.textContent = titulo;
+
+  secao.append(cabecalho, montarConteudo(tituloId));
+  return secao;
+}

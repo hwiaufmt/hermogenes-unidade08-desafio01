@@ -197,7 +197,7 @@ def test_ca12_so_o_estoquista_ve_o_botao_de_excluir_na_pesquisa(
     assert 'data-pode-excluir="nao"' in operador
 
 
-def test_ca13_pagina_saldos_tem_totais_e_a_tabela_por_material(
+def test_ca18_pagina_saldos_tem_totais_e_um_espaco_para_as_secoes_por_categoria(
     client: TestClient,
 ) -> None:
     html = client.get("/estoque/saldos").text
@@ -206,38 +206,43 @@ def test_ca13_pagina_saldos_tem_totais_e_a_tabela_por_material(
         'id="total-materiais"',
         'id="total-unidades"',
         'id="total-indisponiveis"',
-        'id="tabela-saldos"',
-        'id="corpo-saldos"',
+        'id="grupos"',
+        'id="vazio"',
         'id="botao-atualizar"',
     ):
         assert elemento in html
     assert "js/saldos.js" in html
 
 
-def test_ca13_tabela_de_saldos_tem_as_colunas_na_ordem_pedida(
+def test_ca18_saldos_nao_tem_mais_a_tabela_unica_nem_o_resumo_por_categoria(
     client: TestClient,
 ) -> None:
     html = client.get("/estoque/saldos").text
 
-    cabecalho = html[html.index("<thead>") : html.index("</thead>")]
-    ordem = [
-        cabecalho.index(">Material<"),
-        cabecalho.index(">Quantidade<"),
-        cabecalho.index(">Categoria<"),
-        cabecalho.index(">Disponível<"),
-    ]
-    assert ordem == sorted(ordem)
-    assert cabecalho.count("<th ") == 4
-
-
-def test_ca13_saldos_nao_tem_mais_o_resumo_por_categoria_nem_o_detalhe(
-    client: TestClient,
-) -> None:
-    html = client.get("/estoque/saldos").text
-
+    assert 'id="tabela-saldos"' not in html
+    assert 'id="corpo-saldos"' not in html
+    assert "<thead>" not in html  # as tabelas são montadas por seção, no JavaScript
     assert 'id="resumo-categorias"' not in html
-    assert 'id="detalhe-saldos"' not in html
     assert "Resumo por categoria" not in html
+
+
+def test_ca18_colunas_de_saldos_sao_material_quantidade_e_disponivel(
+    client: TestClient,
+) -> None:
+    # As tabelas são montadas no JavaScript: confere a definição das colunas.
+    js = client.get("/static/js/saldos.js").text
+
+    colunas = js[js.index("const COLUNAS") : js.index("];", js.index("const COLUNAS"))]
+    assert colunas.index('"Material"') < colunas.index('"Quantidade"')
+    assert colunas.index('"Quantidade"') < colunas.index('"Disponível"')
+    assert '"Categoria"' not in colunas
+    assert colunas.count("[") == 4  # abertura da lista + 3 colunas
+
+
+def test_ca18_saldos_avisa_nas_categorias_sem_materiais(client: TestClient) -> None:
+    js = client.get("/static/js/saldos.js").text
+
+    assert "Nenhum material nesta categoria." in js
 
 
 def test_ca11_pagina_de_saldos_nao_colide_com_a_api(client: TestClient) -> None:

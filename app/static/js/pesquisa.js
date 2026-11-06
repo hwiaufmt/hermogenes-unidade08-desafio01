@@ -1,9 +1,10 @@
 import { mostrarMensagem, requisitar } from "./api.js";
 import {
-  criarCabecalho,
   criarCelula,
   criarCelulaDisponivel,
   criarRegiaoRolavel,
+  criarSecaoDeCategoria,
+  criarTabela,
 } from "./tabelas.js";
 
 const ESPERA_DA_BUSCA_MS = 250;
@@ -62,23 +63,13 @@ function criarLinha(material) {
 }
 
 function criarGrupo(categoria, materiais, indice) {
-  const tituloId = `grupo-${indice}`;
-  const secao = document.createElement("section");
-  secao.setAttribute("aria-labelledby", tituloId);
-
-  const titulo = document.createElement("h2");
-  titulo.id = tituloId;
-  titulo.textContent = categoria;
-
-  const corpo = document.createElement("tbody");
-  corpo.append(...materiais.map(criarLinha));
-  const tabela = document.createElement("table");
-  tabela.append(criarCabecalho(colunasDaTabela()), corpo);
-
-  secao.append(titulo, criarRegiaoRolavel(tabela, tituloId));
-  return secao;
+  return criarSecaoDeCategoria(indice, categoria, (tituloId) =>
+    criarRegiaoRolavel(criarTabela(colunasDaTabela(), materiais.map(criarLinha)), tituloId),
+  );
 }
 
+// O servidor já entrega os materiais ordenados por categoria e nome: aqui só se
+// agrupa, mantendo a ordem em que as categorias aparecem.
 function agruparPorCategoria(materiais) {
   const porCategoria = new Map();
   for (const material of materiais) {
@@ -86,7 +77,7 @@ function agruparPorCategoria(materiais) {
     if (!porCategoria.has(nome)) porCategoria.set(nome, []);
     porCategoria.get(nome).push(material);
   }
-  return [...porCategoria].sort(([a], [b]) => a.localeCompare(b, "pt-BR"));
+  return [...porCategoria];
 }
 
 function haFiltroAtivo() {
