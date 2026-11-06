@@ -206,7 +206,7 @@ Códigos de erro: `401` sem login; `403` perfil sem permissão; `404` material/c
 19. Nas telas, a disponibilidade é rotulada **Sim/Não**; a tradução do texto da API (`"Disponível"` → Sim; demais → Não) é só um rótulo, feito em um único lugar do JavaScript (`rotuloDisponivel`). O JavaScript não calcula o status.
 20. A exclusão de categoria é **lógica** e **bloqueada se algum material ativo tiver saldo**; os ativos sem saldo são excluídos junto (mesma transação). Para liberar o nome (o `UNIQUE` de `categorias.nome` não sai com `ALTER TABLE`), o nome guardado vira `"<nome> [excluída #id]"`; assim basta a coluna nova da migração leve. Toda leitura de categorias (listagem, totais, saldos, busca por id, nome repetido) ignora as excluídas, via `listar_categorias` e `_obter_categoria_ativa`. O seed só cria as categorias iniciais com a tabela **vazia** (contando as excluídas), para não ressuscitá-las.
 
-## 7. Plano em sprints (1 a 9 concluídas)
+## 7. Plano em sprints (1 a 9 concluídas; 10 planejada)
 
 ### Sprint 1 — Fundação e cadastro
 - Setup do projeto (FastAPI, SQLAlchemy, pytest, ruff, estrutura de pastas)
@@ -282,6 +282,17 @@ Decisões do dono do projeto: (a) categoria **com material com saldo não pode s
 - **Seed (decidido na parte 1):** como o nome foi liberado, uma categoria inicial excluída voltaria no próximo início; por isso o seed só roda com a tabela de categorias **vazia** (contando as excluídas). Efeito: um banco sem as três categorias iniciais, mas com outras, não as recebe de volta.
 - Fora desta sprint: restaurar categoria excluída.
 - **Pronto quando:** o estoquista exclui uma categoria pela tela; os materiais sem saldo saem junto, e com material com saldo é bloqueado e vê quantos; a categoria some de todo o sistema e o nome pode ser reutilizado; o banco existente é migrado sem perda. **Verificado:** CA-15 e CA-16 passam (testes `test_ca15_*` e `test_ca16_*`) e a tela foi conferida no navegador em desktop e celular (categoria com material bloqueada, sem material excluída, nome reutilizado). Após a entrega, a regra de bloqueio foi corrigida para olhar só o **saldo** (material zerado por saídas não bloqueia) e verificada de novo no navegador.
+
+### Sprint 10 — Saldos no formato da Pesquisa, com categorias vazias e ordenação igual (planejada; pedido explícito, amplia o escopo)
+Pedido do dono do projeto: (1) ordenar a tela Saldos de forma semelhante à Pesquisa; (2) a tela Saldos deve mostrar também as **categorias sem materiais**. Decisões:
+- **Formato:** a tela Saldos passa a ter **uma seção por categoria** (título da categoria e, abaixo, a tabela dela), como a Pesquisa. Como o título já traz a categoria, a coluna **Categoria sai** e as colunas ficam **Material | Quantidade | Disponível**. Isso **redefine de novo** o CA-13 (decidido na Sprint 8: tabela única com a coluna Categoria). Os cartões do **total geral** continuam.
+- **Categoria sem materiais:** aparece com o título e uma linha avisando que não há materiais ("Nenhum material nesta categoria."); só categorias **ativas** (as excluídas continuam fora).
+- **Ordenação igual nas duas telas:** categorias e materiais em ordem alfabética **sem diferenciar maiúsculas e sem diferenciar acentos** ("Água" junto de "A"), com desempate estável, decidida **no servidor** por uma única função do service. Hoje divergem: a Pesquisa ordena as categorias no navegador (`localeCompare`) e os materiais pelo banco (diferenciando maiúsculas), e a Saldos usa `casefold`. A Pesquisa passa a receber `GET /materiais` já ordenado por categoria e depois por nome, e o JavaScript só **agrupa na ordem recebida**.
+1. **Service e API.** Função única de chave alfabética (maiúsculas e acentos ignorados) usada por `consultar_saldos` e `listar_materiais`; `GET /materiais` passa a sair ordenado por categoria e nome. **A API de `/saldos` não muda de formato** (já devolve as categorias vazias).
+2. **Telas.** Saldos: uma seção por categoria (reaproveitando o formato da Pesquisa), com a linha de "sem materiais" nas vazias. Pesquisa: agrupa na ordem do servidor, sem reordenar.
+3. **Fechamento:** testes CA-17 e CA-18, documentação (README, `docs/`, visão do produto, handoff) e este arquivo (regra 16 e CA-13).
+- **Pronto quando:** Saldos e Pesquisa mostram categorias e materiais na mesma ordem; a Saldos exibe cada categoria em sua seção, inclusive as vazias; e as duas telas continuam coerentes com entradas, saídas e exclusões.
+- **Critérios a verificar:** **CA-17** (ordenação igual nas duas telas e na API, ignorando maiúsculas e acentos); **CA-18** (Saldos com uma seção por categoria, colunas Material | Quantidade | Disponível, e categorias sem materiais visíveis).
 
 ## 8. Padrões de código
 
@@ -399,6 +410,9 @@ O cookie de sessão não tem a flag `Secure` (funciona em `http://localhost`). A
 - [x] O nome de categoria excluída pode ser reutilizado? → **Sim**; ao excluir, o nome guardado vira `"<nome> [excluída #id]"` (o `UNIQUE` do banco não sai com `ALTER TABLE`)
 - [x] Categoria excluída pode ser restaurada? → **Não** pela interface
 - [x] O seed recria categoria inicial excluída? → **Não**: só roda com a tabela de categorias vazia
+- [x] Como a tela Saldos fica "semelhante à Pesquisa"? → **Uma seção por categoria**, sem a coluna Categoria (Sprint 10; redefine o formato do CA-13)
+- [x] "Mostrar categorias se, materiais" (frase do pedido) significa? → **Categorias sem materiais** aparecem na tela Saldos, com uma linha avisando que não há materiais
+- [x] Como igualar a ordenação das telas? → **Alfabética sem diferenciar maiúsculas nem acentos, no servidor, com uma função única** (Sprint 10)
 - [x] Haverá login em versão futura (impacta registrar "quem retirou")? → ~~Ignorar no MVP~~ **Superado na Sprint 4**: login por CPF + senha
 - [x] Como o usuário se identifica? → **CPF + senha**
 - [x] O estoquista também movimenta e pesquisa? → **Não**: só o descrito (cadastros, valores de estoque e consulta, ver matriz na seção 4)
